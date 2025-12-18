@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin – Lista bővítés</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <a href="index.html">
+    <button type="button">⬅️ Vissza a naplóhoz</button>
+    </a>
+  <h1>Admin – Legördülő listák bővítése</h1>
+
+  <form id="form-instructor">
+    <h3>Új oktató hozzáadása</h3>
+    <input type="text" id="instructorName" placeholder="Pl. Dr. Kovács Béla" required>
+    <button type="submit">Mentés</button>
+    <p id="instructorMessage"></p>
+  </form>
+
+  <form id="form-topic">
+    <h3>Új téma hozzáadása</h3>
+    <input type="text" id="topicName" placeholder="Pl. Algoritmusok" required>
+    <button type="submit">Mentés</button>
+    <p id="topicMessage"></p>
+  </form>
+
+  <form id="form-outline">
+    <h3>Új vázlat hozzáadása</h3>
+    <input type="text" id="outlineContent" placeholder="Pl. DFS, BFS gráfbejárás" required>
+    <button type="submit">Mentés</button>
+    <p id="outlineMessage"></p>
+  </form>
+  <hr>
+<h2>Oktatók listája</h2>
+<div id="instructorList"></div>
+
+<h2>Témák listája</h2>
+<div id="topicList"></div>
+
+<h2>Vázlatok listája</h2>
+<div id="outlineList"></div>
+  <script src="admin.js"></script>
+</body>
+</html>

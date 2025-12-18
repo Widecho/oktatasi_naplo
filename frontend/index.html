@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8">
+  <title>Oktatási Napló</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <h1>Új naplóbejegyzés</h1>
+
+  <form id="entryForm">
+    <input type="date" id="date" required>
+
+    <select id="hours" required></select>
+    <select id="durations" required></select>
+    <select id="instructors" required></select>
+    <select id="topics" required></select>
+    <select id="outlines" required></select>
+
+    <button type="submit">Mentés</button>
+    <button type="button" id="cancelEdit" style="display: none;">❌ Mégse szerkesztés</button>
+  </form>
+
+  <hr>
+  <button onclick="exportToExcel()">📥 XLS export</button>
+
+  <h2>Naplóbejegyzések</h2>
+
+  <label for="monthSelect"><strong>Válassz hónapot:</strong></label>
+  <select id="monthSelect"></select>
+  <button onclick="loadMonthlyEntries()">📅 Megjelenítés</button>
+
+  <div id="entryList" class="calendar-view"></div>
+
+  <p id="response"></p>
+
+  <script src="script.js"></script>
+</body>
+</html>
