@@ -1,6 +1,11 @@
 const API_URL = 'http://localhost:3000/api';
 let editingId = null;
 
+function logout() {
+  localStorage.removeItem('token');
+  window.location.href = 'login.html';
+}
+
 // ✅ Login oldal logika
 const loginForm = document.getElementById('loginForm');
 if (loginForm) {
@@ -21,6 +26,31 @@ if (loginForm) {
       window.location.href = 'index.html';
     } else {
       document.getElementById('error').textContent = data.error || 'Hiba';
+    }
+  });
+}
+
+// ✅ Regisztráció oldal logika
+const registerForm = document.getElementById('registerForm');
+if (registerForm) {
+  registerForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const username = document.getElementById('regUsername').value;
+    const password = document.getElementById('regPassword').value;
+    const secretCode = document.getElementById('secretCode').value;
+
+    const res = await fetch(`${API_URL}/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password, secretCode })
+    });
+
+    const data = await res.json();
+    const msgElement = document.getElementById('regMessage');
+    msgElement.textContent = res.ok ? '✅ Regisztráció sikeres!' : `❌ ${data.error}`;
+
+    if (res.ok) {
+      setTimeout(() => window.location.href = 'login.html', 1500);
     }
   });
 }

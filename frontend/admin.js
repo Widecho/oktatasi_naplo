@@ -1,6 +1,11 @@
 const API_URL = 'http://localhost:3000/api';
 const token = localStorage.getItem('token');
 
+function logout() {
+  localStorage.removeItem('token');
+  window.location.href = 'login.html';
+}
+
 // Token ellenőrzés – csak admin léphessen be
 try {
   const decoded = JSON.parse(atob(token.split('.')[1]));

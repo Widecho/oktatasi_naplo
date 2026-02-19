@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="hu">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Regisztráció</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <h1>Regisztráció</h1>
+    <form id="registerForm">
+        <input type="text" id="regUsername" placeholder="Felhasználónév" required>
+        <input type="password" id="regPassword" placeholder="Jelszó (min. 1 szám)" required>
+        <input type="text" id="secretCode"
+            placeholder="Titkos kód (admin felhasználó létrehozásához add meg a szupertitkos kódot) )">
+        <button type="submit">Regisztráció</button>
+    </form>
+    <p id="regMessage"></p>
+    <p>Már van fiókod? <a href="login.html">Jelentkezz be!</a></p>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
