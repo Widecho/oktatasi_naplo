@@ -29,6 +29,7 @@ if (loginForm) {
 const entryForm = document.getElementById('entryForm');
 if (entryForm) {
   const cancelBtn = document.getElementById('cancelEdit');
+  setTodayDate();
   const token = localStorage.getItem('token');
 
   try {
@@ -96,6 +97,7 @@ if (entryForm) {
 
     if (res.ok) {
       entryForm.reset();
+      setTodayDate();
       editingId = null;
       entryForm.classList.remove('editing-mode');
       cancelBtn.style.display = 'none';
@@ -105,6 +107,7 @@ if (entryForm) {
 
   cancelBtn.addEventListener('click', () => {
     entryForm.reset();
+    setTodayDate();
     editingId = null;
     entryForm.classList.remove('editing-mode');
     cancelBtn.style.display = 'none';
@@ -231,3 +234,14 @@ function exportToExcel() {
   window.open(`${API_URL}/export/${ev}/${honap}`, '_blank');
 }
 
+
+function setTodayDate() {
+  const dateInput = document.getElementById('date');
+  if (dateInput) {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    dateInput.value = `${yyyy}-${mm}-${dd}`;
+  }
+}
