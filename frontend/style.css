@@ -148,3 +148,23 @@ form button {
   /* Ne nyúljon ki teljes szélességre, ha nem muszáj */
   min-width: 140px;
 }
+
+/* Dátumválasztó ikon láthatóvá tétele és színezése */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(100%) sepia(100%) saturate(10000%) hue-rotate(170deg);
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 2px;
+  transition: all 0.2s ease;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  transform: scale(1.2);
+  filter: invert(1) brightness(100%) sepia(100%) saturate(10000%) hue-rotate(180deg);
+  box-shadow: 0 0 10px var(--primary);
+}
+
+/* Firefox specifikus (ha szükséges) */
+input[type="date"] {
+  color-scheme: dark;
+}
