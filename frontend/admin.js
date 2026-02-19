@@ -74,6 +74,7 @@ function loadAllLists() {
   loadList('instructors', 'instructorList', 'name', 'instructors');
   loadList('topics', 'topicList', 'name', 'topics');
   loadList('outlines', 'outlineList', 'content', 'outlines');
+  loadList('durations', 'durationList', 'value', 'durations');
 }
 
 // ✏️ Beküldés 3 formhoz
@@ -95,6 +96,13 @@ document.getElementById('form-outline').addEventListener('submit', e => {
   e.preventDefault();
   const content = document.getElementById('outlineContent').value.trim();
   postData('outlines', { content }, document.getElementById('outlineMessage'));
+  e.target.reset();
+});
+
+document.getElementById('form-duration').addEventListener('submit', e => {
+  e.preventDefault();
+  const value = document.getElementById('durationValue').value.trim();
+  postData('durations', { value }, document.getElementById('durationMessage'));
   e.target.reset();
 });
 

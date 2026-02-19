@@ -63,6 +63,21 @@ router.post('/outlines', auth, adminOnly, (req, res) => {
   });
 });
 
+// ✅ POST /admin/durations – új időtartam felvétele
+router.post('/durations', auth, adminOnly, (req, res) => {
+  const { value } = req.body;
+  if (!value || value.trim() === '') {
+    return res.status(400).json({ error: 'Az időtartam megadása kötelező.' });
+  }
+
+  db.run('INSERT INTO durations (value) VALUES (?)', [value.trim()], function (err) {
+    if (err) {
+      return res.status(500).json({ error: 'Hiba az időtartam mentésekor.', details: err.message });
+    }
+    res.status(201).json({ message: 'Időtartam sikeresen hozzáadva.', id: this.lastID });
+  });
+});
+
 // 🗑️ Oktató törlése
 router.delete('/instructors/:id', auth, adminOnly, (req, res) => {
   const id = req.params.id;
@@ -102,6 +117,20 @@ router.delete('/outlines/:id', auth, adminOnly, (req, res) => {
       return res.status(404).json({ error: 'Nem található ilyen vázlat.' });
     }
     res.json({ message: 'Vázlat sikeresen törölve.' });
+  });
+});
+
+// 🗑️ Időtartam törlése
+router.delete('/durations/:id', auth, adminOnly, (req, res) => {
+  const id = req.params.id;
+  db.run('DELETE FROM durations WHERE id = ?', [id], function (err) {
+    if (err) {
+      return res.status(500).json({ error: 'Hiba az időtartam törlésekor.', details: err.message });
+    }
+    if (this.changes === 0) {
+      return res.status(404).json({ error: 'Nem található ilyen időtartam.' });
+    }
+    res.json({ message: 'Időtartam sikeresen törölve.' });
   });
 });
 
