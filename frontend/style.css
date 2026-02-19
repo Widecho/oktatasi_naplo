@@ -1,159 +1,150 @@
-/* Alap beállítások */
+/* Importáljuk az Inter betűtípust */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
+
+:root {
+  --primary: #00f2fe;
+  /* Neon cián */
+  --secondary: #4facfe;
+  /* Deep sky blue */
+  --accent: #f093fb;
+  /* Puha lila az eleganciához */
+  --warning: #fb923c;
+  --bg-dark: #080c14;
+  --card-bg: rgba(15, 23, 42, 0.65);
+  --glass-border: rgba(255, 255, 255, 0.08);
+}
+
 body {
-  font-family: "Poppins", sans-serif;
-  max-width: 700px;
+  font-family: 'Inter', sans-serif;
+  max-width: 850px;
   margin: 40px auto;
   padding: 20px;
-  background: linear-gradient(135deg, #6a11cb, #2575fc);
-  color: #f4f4f4;
-  border-radius: 20px;
-  box-shadow: 0 0 40px rgba(0,0,0,0.3);
+  background-color: var(--bg-dark);
+  /* Dinamikus, mély háttér */
+  background-image:
+    radial-gradient(circle at 10% 20%, rgba(0, 242, 254, 0.05) 0%, transparent 40%),
+    radial-gradient(circle at 90% 80%, rgba(79, 172, 254, 0.05) 0%, transparent 40%);
+  color: #f1f5f9;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Inputok és select-ek */
-form input, form select, form button {
-  display: block;
-  width: 100%;
-  margin: 12px 0;
-  padding: 12px 16px;
-  border: none;
-  border-radius: 12px;
-  font-size: 15px;
-  outline: none;
-  transition: all 0.3s ease;
+/* Fő konténer - Lebegő üveg hatás */
+#app-container {
+  background: var(--card-bg);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid var(--glass-border);
+  border-radius: 28px;
+  padding: 40px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+  position: relative;
+  overflow: hidden;
 }
 
-form input:focus, form select:focus {
-  box-shadow: 0 0 10px rgba(255,255,255,0.7);
-  transform: scale(1.03);
+/* Dekorációs elem a háttérben */
+#app-container::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
 }
 
-/* Edit mód neon villogással */
-.editing-mode {
-  border: 3px solid #ff0044;
-  animation: blink-border 1s infinite alternate;
-  padding: 14px;
-  border-radius: 12px;
-  background: rgba(255,0,68,0.1);
-}
-
-@keyframes blink-border {
-  from {
-    box-shadow: 0 0 20px #ff0044, 0 0 40px #ff0044;
-  }
-  to {
-    box-shadow: 0 0 0px #ff0044;
-  }
-}
-
-/* Gombok */
-button {
-  margin: 10px 0;
-  padding: 10px 18px;
-  font-size: 15px;
-  cursor: pointer;
-  border-radius: 12px;
-  border: none;
-  background: linear-gradient(135deg, #ff512f, #dd2476);
+/* Modern Inputok - "Cyber-minimal" */
+form input,
+form select {
+  background: rgba(2, 6, 23, 0.4);
+  border: 1px solid #1e293b;
   color: #fff;
-  font-weight: bold;
-  letter-spacing: 0.5px;
-  transition: all 0.3s ease;
+  padding: 14px 18px;
+  border-radius: 12px;
+  width: 100%;
+  margin-bottom: 20px;
+  font-size: 1rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-sizing: border-box;
+}
+
+form input:focus {
+  border-color: var(--primary);
+  outline: none;
+  background: rgba(2, 6, 23, 0.6);
+  box-shadow: 0 0 15px rgba(0, 242, 254, 0.15);
+  transform: scale(1.01);
+}
+
+/* Gombok - Gradient & Glow */
+button {
+  background: rgba(0, 242, 254, 0.1);
+  /* Sötétebb alap az összefolyás ellen */
+  color: var(--primary);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  border: 1px solid var(--primary);
+  padding: 10px 20px;
+  /* Kisebb, feszesebb méret */
+  border-radius: 6px;
+  /* Szögletesebb, technikaibb hatás */
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+  box-shadow: 0 0 10px rgba(0, 242, 254, 0.2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 5px;
+  /* Hogy ne érjenek össze */
 }
 
 button:hover {
+  background: var(--primary);
+  color: #080c14;
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+  box-shadow: 0 0 20px rgba(0, 242, 254, 0.6);
 }
 
+button:active {
+  transform: translateY(0);
+}
+
+/* Még kisebb gombok a bejegyzésekhez (Törlés/Szerkesztés) */
+.entry-item button {
+  padding: 6px 12px;
+  font-size: 0.7rem;
+  margin-top: 10px;
+  margin-right: 8px;
+  background: transparent;
+  border-width: 1px;
+}
+
+/* Még különlegesebb Cancel gomb */
 #cancelEdit {
-  background: #444;
-  color: #fff;
+  background: transparent;
+  border: 1px solid #475569;
+  color: #94a3b8;
+  box-shadow: none;
 }
 
 #cancelEdit:hover {
-  background: #666;
+  border-color: #f1f5f9;
+  color: #f1f5f9;
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
 }
 
-/* Naptár nézet */
-.calendar-view {
+/* Form elrendezés javítása, hogy az inputok és gombok ne tapadjanak */
+form {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  margin-top: 1.5rem;
-  border-top: 2px solid rgba(255,255,255,0.2);
-  padding-top: 1rem;
+  gap: 5px;
 }
 
-/* Dátum blokk */
-.day-group {
-  border: 1px solid rgba(255,255,255,0.3);
-  padding: 1rem;
-  border-radius: 14px;
-  background: rgba(255,255,255,0.1);
-  backdrop-filter: blur(5px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-  transition: transform 0.3s ease;
-}
-
-.day-group:hover {
-  transform: scale(1.02);
-}
-
-/* Dátum cím */
-.day-group h3 {
-  margin: 0 0 0.8rem;
-  color: #ffeb3b;
-  font-size: 20px;
-  border-bottom: 2px solid rgba(255,255,255,0.4);
-  padding-bottom: 0.3rem;
-}
-
-/* Bejegyzések */
-.entry-item {
-  border-top: 1px dashed rgba(255,255,255,0.3);
-  padding: 0.5rem 0;
-}
-
-.entry-item strong {
-  color: #fff;
-}
-
-.entry-item em {
-  color: #ddd;
-  display: block;
-  margin: 0.2rem 0;
-}
-
-.entry-item small {
-  color: #bbb;
-  font-size: 12px;
-}
-
-.entry-item button {
-  margin-top: 5px;
-  margin-right: 5px;
-  font-size: 12px;
-  padding: 6px 10px;
-  border-radius: 8px;
-}
-
-/* Hónapválasztó */
-#monthSelect {
-  margin: 0.5rem 0;
-  padding: 8px 12px;
-  font-size: 15px;
-  width: auto;
-  display: inline-block;
-  background: rgba(255,255,255,0.2);
-  color: #fff;
-  border-radius: 8px;
-  border: none;
-}
-
-label[for="monthSelect"] {
-  display: inline-block;
-  margin-right: 0.5rem;
-  font-weight: bold;
-  color: #fff;
+form button {
+  align-self: flex-start;
+  /* Ne nyúljon ki teljes szélességre, ha nem muszáj */
+  min-width: 140px;
 }
