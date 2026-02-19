@@ -214,6 +214,7 @@ function editEntry(id, date, hour, duration, instructor, topic, outline) {
   editingId = id;
   document.getElementById('response').textContent = '✏️ Szerkesztési mód: módosítasz egy bejegyzést.';
   document.getElementById('entryForm').classList.add('editing-mode');
+  document.querySelector('#entryForm').scrollIntoView({ behavior: 'smooth' });
   document.getElementById('cancelEdit').style.display = 'inline-block';
 }
 

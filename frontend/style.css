@@ -168,3 +168,15 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 input[type="date"] {
   color-scheme: dark;
 }
+
+/* Szerkesztés mód: Piros keret a legördülő listákon */
+#entryForm.editing-mode select {
+  border: 2px solid #ff4444;
+  box-shadow: 0 0 10px rgba(255, 68, 68, 0.4);
+  transform: scale(1.02);
+}
+
+/* Szerkesztés mód: Piros keret a dátum mezőn is (opcionális, de ajánlott) */
+#entryForm.editing-mode input[type="date"] {
+  border: 1px solid #ff4444;
+}
