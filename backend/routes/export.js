@@ -82,44 +82,74 @@ router.get('/export', auth, async (req, res) => {
     properties: { tabColor: { argb: 'FFC0000' } }
   });
 
-  // fejléc
-  sheet.mergeCells('A1:A2');
-  sheet.mergeCells('B1:B2');
-  sheet.mergeCells('C1:C2');
-  sheet.mergeCells('D1:D2');
-  sheet.mergeCells('E1:E2');
-  sheet.mergeCells('F1:F2');
-  sheet.mergeCells('G1:G2');
-  sheet.mergeCells('H1:H2');
+  let rowIndex;
+  let cols = [];
 
-  sheet.getCell('A1').value = 'Óra';
-  sheet.getCell('B1').value = 'Műszak';
-  sheet.getCell('C1').value = 'Oktatás típusa';
-  sheet.getCell('D1').value = 'Időtartam';
-  sheet.getCell('E1').value = 'Oktató';
-  sheet.getCell('F1').value = 'Téma';
-  sheet.getCell('G1').value = 'Vázlat';
-  sheet.getCell('H1').value = 'Kitöltötte';
+  if (userRole === 'admin') {
+    cols = [
+      { header: 'Óra', width: 14 },
+      { header: 'Műszak', width: 12 },
+      { header: 'Oktatás típusa', width: 25 },
+      { header: 'Időtartam', width: 18 },
+      { header: 'Oktató', width: 25 },
+      { header: 'Téma', width: 20 },
+      { header: 'Vázlat', width: 40 },
+      { header: 'Kitöltötte', width: 18 }
+    ];
 
-  ['A1', 'B1', 'C1', 'D1', 'E1', 'F1', 'G1', 'H1'].forEach(cell => {
-    sheet.getCell(cell).alignment = { vertical: 'middle', horizontal: 'center' };
-    sheet.getCell(cell).font = { bold: true };
-    sheet.getCell(cell).fill = {
-      type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F81BD' }
-    };
-    sheet.getCell(cell).border = {
-      top: { style: 'thin' }, left: { style: 'thin' },
-      bottom: { style: 'thin' }, right: { style: 'thin' }
-    };
-  });
+    const letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+    letters.forEach((letter, index) => {
+      sheet.mergeCells(`${letter}1:${letter}2`);
+      sheet.getCell(`${letter}1`).value = cols[index].header;
 
-  let rowIndex = 3;
+      const cell = sheet.getCell(`${letter}1`);
+      cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      cell.font = { bold: true };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F81BD' } };
+      cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+    });
+    rowIndex = 3;
+  } else {
+    cols = [
+      { header: 'Óra', width: 14 },
+      { header: 'Oktatás típusa', width: 25 },
+      { header: 'Időtartam', width: 18 },
+      { header: 'Oktató', width: 25 },
+      { header: 'Téma', width: 20 },
+      { header: 'Vázlat', width: 40 },
+      { header: 'Kitöltötte', width: 18 }
+    ];
+
+    sheet.mergeCells('A1:G1');
+    const titleCell = sheet.getCell('A1');
+    titleCell.value = `${userShift}. műszak`;
+    titleCell.font = { bold: true, size: 14 };
+    titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
+    titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } };
+    titleCell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+
+    const letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
+    letters.forEach((letter, index) => {
+      sheet.mergeCells(`${letter}2:${letter}3`);
+      sheet.getCell(`${letter}2`).value = cols[index].header;
+
+      const cell = sheet.getCell(`${letter}2`);
+      cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      cell.font = { bold: true };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F81BD' } };
+      cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+    });
+    rowIndex = 4;
+  }
+
   let currentDate = '';
+  sheet.columns = cols.map(c => ({ width: c.width }));
 
   for (const row of rows) {
     if (row.date !== currentDate) {
       currentDate = row.date;
-      sheet.mergeCells(`A${rowIndex}:H${rowIndex}`);
+      const mergeEnd = userRole === 'admin' ? 'H' : 'G';
+      sheet.mergeCells(`A${rowIndex}:${mergeEnd}${rowIndex}`);
       const dateCell = sheet.getCell(`A${rowIndex}`);
       dateCell.value = `${row.date}`;
       dateCell.font = { bold: true };
@@ -130,21 +160,27 @@ router.get('/export', auth, async (req, res) => {
       rowIndex++;
     }
     const excelRow = sheet.getRow(rowIndex);
-    excelRow.getCell(1).value = row.hour;
-    excelRow.getCell(2).value = row.shift;
-    excelRow.getCell(3).value = row.education_type;
-    excelRow.getCell(4).value = row.duration;
-    excelRow.getCell(5).value = row.instructor;
-    excelRow.getCell(6).value = row.topic;
-    excelRow.getCell(7).value = row.outline;
-    excelRow.getCell(8).value = row.user;
+
+    if (userRole === 'admin') {
+      excelRow.getCell(1).value = row.hour;
+      excelRow.getCell(2).value = row.shift;
+      excelRow.getCell(3).value = row.education_type;
+      excelRow.getCell(4).value = row.duration;
+      excelRow.getCell(5).value = row.instructor;
+      excelRow.getCell(6).value = row.topic;
+      excelRow.getCell(7).value = row.outline;
+      excelRow.getCell(8).value = row.user;
+    } else {
+      excelRow.getCell(1).value = row.hour;
+      excelRow.getCell(2).value = row.education_type;
+      excelRow.getCell(3).value = row.duration;
+      excelRow.getCell(4).value = row.instructor;
+      excelRow.getCell(5).value = row.topic;
+      excelRow.getCell(6).value = row.outline;
+      excelRow.getCell(7).value = row.user;
+    }
     rowIndex++;
   }
-
-  sheet.columns = [
-    { width: 14 }, { width: 12 }, { width: 25 }, { width: 18 }, { width: 25 },
-    { width: 20 }, { width: 40 }, { width: 18 },
-  ];
 
   const buffer = await workbook.xlsx.writeBuffer();
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
