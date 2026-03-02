@@ -25,14 +25,40 @@
   </form>
 
   <hr>
-  <button onclick="exportToExcel()">📥 XLS export</button>
-  <button onclick="logout()">🚪 Kijelentkezés</button>
+  <button onclick="logout()" style="float: right;">🚪 Kijelentkezés</button>
+
+  <h2>Szűrés és Exportálás</h2>
+
+  <div class="filter-section" style="margin-bottom: 20px;">
+    <label for="filterType"><strong>Szűrés típusa:</strong></label>
+    <select id="filterType" onchange="updateFilterUI()">
+      <option value="month">Havi bontás</option>
+      <option value="day">Napi bontás</option>
+      <option value="interval">Időszak</option>
+    </select>
+
+    <span id="monthFilterContainer">
+      <label for="monthSelect"><strong>Hónap:</strong></label>
+      <select id="monthSelect"></select>
+    </span>
+
+    <span id="dayFilterContainer" style="display: none;">
+      <label for="daySelect"><strong>Nap:</strong></label>
+      <input type="date" id="daySelect">
+    </span>
+
+    <span id="intervalFilterContainer" style="display: none;">
+      <label for="startDate"><strong>Kezdő dátum:</strong></label>
+      <input type="date" id="startDate">
+      <label for="endDate"><strong>Záró dátum:</strong></label>
+      <input type="date" id="endDate">
+    </span>
+
+    <button onclick="loadEntries()">📅 Megjelenítés</button>
+    <button onclick="exportToExcel()">📥 XLS export</button>
+  </div>
 
   <h2>Naplóbejegyzések</h2>
-
-  <label for="monthSelect"><strong>Válassz hónapot:</strong></label>
-  <select id="monthSelect"></select>
-  <button onclick="loadMonthlyEntries()">📅 Megjelenítés</button>
 
   <div id="entryList" class="calendar-view"></div>
 

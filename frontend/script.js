@@ -144,8 +144,21 @@ if (entryForm) {
     document.getElementById('response').textContent = 'Szerkesztés megszakítva.';
   });
 
-  loadEntries();
   populateMonthSelect();
+  initDateFilters();
+  loadEntries();
+}
+
+function initDateFilters() {
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+  const todayStr = `${yyyy}-${mm}-${dd}`;
+
+  if (document.getElementById('daySelect')) document.getElementById('daySelect').value = todayStr;
+  if (document.getElementById('startDate')) document.getElementById('startDate').value = todayStr;
+  if (document.getElementById('endDate')) document.getElementById('endDate').value = todayStr;
 }
 
 function populateMonthSelect() {
@@ -166,8 +179,7 @@ function populateMonthSelect() {
 async function loadEntries() {
   const token = localStorage.getItem('token');
   const container = document.getElementById('entryList');
-  const monthSelect = document.getElementById('monthSelect');
-  if (!container || !monthSelect) return;
+  if (!container) return;
 
   const res = await fetch(`${API_URL}/naplo`, {
     headers: { 'Authorization': `Bearer ${token}` }
@@ -179,8 +191,32 @@ async function loadEntries() {
   }
 
   const entries = await res.json();
-  const selectedMonth = monthSelect.value || new Date().toISOString().slice(0, 7);
-  const filtered = entries.filter(e => e.date.startsWith(selectedMonth));
+
+  const filterType = document.getElementById('filterType') ? document.getElementById('filterType').value : 'month';
+  let filtered = [];
+
+  if (filterType === 'month') {
+    const monthSelect = document.getElementById('monthSelect');
+    const selectedMonth = monthSelect ? monthSelect.value : new Date().toISOString().slice(0, 7);
+    filtered = entries.filter(e => e.date.startsWith(selectedMonth));
+  } else if (filterType === 'day') {
+    const selectedDay = document.getElementById('daySelect').value;
+    if (selectedDay) {
+      filtered = entries.filter(e => e.date === selectedDay);
+    } else {
+      filtered = entries;
+    }
+  } else if (filterType === 'interval') {
+    const start = document.getElementById('startDate').value;
+    const end = document.getElementById('endDate').value;
+    filtered = entries.filter(e => {
+      let isMatch = true;
+      if (start && e.date < start) isMatch = false;
+      if (end && e.date > end) isMatch = false;
+      return isMatch;
+    });
+  }
+
   const grouped = {};
   filtered.forEach(e => {
     if (!grouped[e.date]) grouped[e.date] = [];
@@ -212,9 +248,7 @@ async function loadEntries() {
   });
 }
 
-async function loadMonthlyEntries() {
-  loadEntries();
-}
+
 
 async function deleteEntry(id) {
   const token = localStorage.getItem('token');
@@ -258,11 +292,33 @@ function setDropdownValue(selectId, label) {
   }
 }
 
+function updateFilterUI() {
+  const type = document.getElementById('filterType').value;
+  document.getElementById('monthFilterContainer').style.display = type === 'month' ? 'inline' : 'none';
+  document.getElementById('dayFilterContainer').style.display = type === 'day' ? 'inline' : 'none';
+  document.getElementById('intervalFilterContainer').style.display = type === 'interval' ? 'inline' : 'none';
+}
+
 function exportToExcel() {
-  const month = document.getElementById('monthSelect').value;
-  if (!month) return alert('Válassz hónapot!');
-  const [ev, honap] = month.split('-');
-  window.open(`${API_URL}/export/${ev}/${honap}`, '_blank');
+  const type = document.getElementById('filterType') ? document.getElementById('filterType').value : 'month';
+  let url = `${API_URL}/export?type=${type}`;
+
+  if (type === 'month') {
+    const month = document.getElementById('monthSelect').value;
+    if (!month) return alert('Válassz hónapot!');
+    url += `&month=${month}`;
+  } else if (type === 'day') {
+    const day = document.getElementById('daySelect').value;
+    if (!day) return alert('Válassz napot!');
+    url += `&day=${day}`;
+  } else if (type === 'interval') {
+    const start = document.getElementById('startDate').value;
+    const end = document.getElementById('endDate').value;
+    if (!start || !end) return alert('Válaszd ki a kezdő és végdátumot!');
+    url += `&start=${start}&end=${end}`;
+  }
+
+  window.open(url, '_blank');
 }
 
 

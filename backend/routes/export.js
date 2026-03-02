@@ -4,9 +4,33 @@ const router = express.Router();
 const db = require('../models/db');
 const ExcelJS = require('exceljs');
 
-router.get('/export/:ev/:honap', async (req, res) => {
-  const { ev, honap } = req.params;
-  const honapString = `${ev}-${honap.padStart(2, '0')}`;
+router.get('/export', async (req, res) => {
+  const { type, month, day, start, end } = req.query;
+
+  let whereClause = '';
+  let queryParams = [];
+  let filenameSuffix = 'export';
+
+  if (type === 'month' && month) {
+    whereClause = "WHERE strftime('%Y-%m', naplo_entries.date) = ?";
+    queryParams = [month];
+    filenameSuffix = month;
+  } else if (type === 'day' && day) {
+    whereClause = "WHERE naplo_entries.date = ?";
+    queryParams = [day];
+    filenameSuffix = day;
+  } else if (type === 'interval' && start && end) {
+    whereClause = "WHERE naplo_entries.date BETWEEN ? AND ?";
+    queryParams = [start, end];
+    filenameSuffix = `${start}_to_${end}`;
+  } else {
+    // default to current month if no valid parameters provided
+    const date = new Date();
+    const currentMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    whereClause = "WHERE strftime('%Y-%m', naplo_entries.date) = ?";
+    queryParams = [currentMonth];
+    filenameSuffix = currentMonth;
+  }
 
   const rows = await new Promise((resolve, reject) => {
     db.all(`
@@ -25,9 +49,9 @@ router.get('/export/:ev/:honap', async (req, res) => {
       JOIN topics ON naplo_entries.topic_id = topics.id
       JOIN outlines ON naplo_entries.outline_id = outlines.id
       JOIN users ON naplo_entries.user_id = users.id
-      WHERE strftime('%Y-%m', naplo_entries.date) = ?
+      ${whereClause}
       ORDER BY naplo_entries.date ASC, naplo_entries.hour_id ASC
-    `, [honapString], (err, rows) => {
+    `, queryParams, (err, rows) => {
       if (err) reject(err);
       else resolve(rows);
     });
@@ -53,15 +77,15 @@ router.get('/export/:ev/:honap', async (req, res) => {
   sheet.getCell('E1').value = 'Vázlat';
   sheet.getCell('F1').value = 'Kitöltötte';
 
-  ['A1','B1','C1','D1','E1','F1'].forEach(cell => {
+  ['A1', 'B1', 'C1', 'D1', 'E1', 'F1'].forEach(cell => {
     sheet.getCell(cell).alignment = { vertical: 'middle', horizontal: 'center' };
     sheet.getCell(cell).font = { bold: true };
     sheet.getCell(cell).fill = {
-      type: 'pattern', pattern:'solid', fgColor:{argb:'FF4F81BD'}
+      type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F81BD' }
     };
     sheet.getCell(cell).border = {
-      top: {style:'thin'}, left: {style:'thin'},
-      bottom: {style:'thin'}, right: {style:'thin'}
+      top: { style: 'thin' }, left: { style: 'thin' },
+      bottom: { style: 'thin' }, right: { style: 'thin' }
     };
   });
 
@@ -77,7 +101,7 @@ router.get('/export/:ev/:honap', async (req, res) => {
       dateCell.font = { bold: true };
       dateCell.alignment = { horizontal: 'left' };
       dateCell.fill = {
-        type: 'pattern', pattern:'solid', fgColor:{argb:'FFD9D9D9'}
+        type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9D9D9' }
       };
       rowIndex++;
     }
@@ -98,7 +122,7 @@ router.get('/export/:ev/:honap', async (req, res) => {
 
   const buffer = await workbook.xlsx.writeBuffer();
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-  res.setHeader('Content-Disposition', `attachment; filename=naplo_${ev}_${honap}.xlsx`);
+  res.setHeader('Content-Disposition', `attachment; filename=naplo_${filenameSuffix}.xlsx`);
   res.send(buffer);
 });
 
