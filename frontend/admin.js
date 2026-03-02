@@ -77,16 +77,24 @@ async function loadList(endpoint, containerId, field, type) {
 
 function loadAllLists() {
   loadList('instructors', 'instructorList', 'name', 'instructors');
+  loadList('education_types', 'educationTypeList', 'name', 'education_types');
   loadList('topics', 'topicList', 'name', 'topics');
   loadList('outlines', 'outlineList', 'content', 'outlines');
   loadList('durations', 'durationList', 'value', 'durations');
 }
 
-// ✏️ Beküldés 3 formhoz
+// ✏️ Beküldés formokhoz
 document.getElementById('form-instructor').addEventListener('submit', e => {
   e.preventDefault();
   const name = document.getElementById('instructorName').value.trim();
   postData('instructors', { name }, document.getElementById('instructorMessage'));
+  e.target.reset();
+});
+
+document.getElementById('form-education-type').addEventListener('submit', e => {
+  e.preventDefault();
+  const name = document.getElementById('educationTypeName').value.trim();
+  postData('education_types', { name }, document.getElementById('educationTypeMessage'));
   e.target.reset();
 });
 

@@ -10,7 +10,8 @@ router.get('/dropdowns', (req, res) => {
     durations: 'SELECT * FROM durations',
     instructors: 'SELECT * FROM instructors',
     topics: 'SELECT * FROM topics',
-    outlines: 'SELECT * FROM outlines'
+    outlines: 'SELECT * FROM outlines',
+    education_types: 'SELECT * FROM education_types'
   };
 
   const results = {};
@@ -39,9 +40,10 @@ router.get('/naplo/honap/:ev/:honap', auth, (req, res) => {
 
   const sql = `
     SELECT e.*, 
-           h.name AS hour, d.name AS duration,
+           h.name AS hour, d.value AS duration,
            i.name AS instructor, t.name AS topic,
-           o.content AS outline, u.username AS user
+           o.content AS outline, u.username AS user,
+           et.name AS education_type
     FROM naplo_entries e
     JOIN hours h ON h.id = e.hour_id
     JOIN durations d ON d.id = e.duration_id
@@ -49,6 +51,7 @@ router.get('/naplo/honap/:ev/:honap', auth, (req, res) => {
     JOIN topics t ON t.id = e.topic_id
     JOIN outlines o ON o.id = e.outline_id
     JOIN users u ON u.id = e.user_id
+    JOIN education_types et ON et.id = e.education_type_id
     WHERE e.date BETWEEN ? AND ?
     ORDER BY e.date ASC, h.id ASC
   `;
@@ -63,20 +66,20 @@ router.get('/naplo/honap/:ev/:honap', auth, (req, res) => {
 
 // POST /naplo – új bejegyzés mentése
 router.post('/naplo', auth, (req, res) => {
-  const { date, hour_id, duration_id, topic_id, outline_id, instructor_id } = req.body;
+  const { date, hour_id, duration_id, topic_id, outline_id, instructor_id, education_type_id } = req.body;
   const user_id = req.user.id; // 🔐 már nem jön a body-ból!
 
-  if (!date || !hour_id || !duration_id || !topic_id || !outline_id || !instructor_id) {
+  if (!date || !hour_id || !duration_id || !topic_id || !outline_id || !instructor_id || !education_type_id) {
     return res.status(400).json({ error: 'Hiányzó mezők a kérésben.' });
   }
 
   const sql = `
     INSERT INTO naplo_entries 
-    (date, hour_id, duration_id, topic_id, outline_id, instructor_id, user_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    (date, hour_id, duration_id, topic_id, outline_id, instructor_id, education_type_id, user_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
-  const params = [date, hour_id, duration_id, topic_id, outline_id, instructor_id, user_id];
+  const params = [date, hour_id, duration_id, topic_id, outline_id, instructor_id, education_type_id, user_id];
 
   db.run(sql, params, function (err) {
     if (err) {
@@ -89,20 +92,20 @@ router.post('/naplo', auth, (req, res) => {
 // PUT /naplo/:id – meglévő bejegyzés szerkesztése
 router.put('/naplo/:id', auth, (req, res) => {
   const entryId = req.params.id;
-  const { date, hour_id, duration_id, topic_id, outline_id, instructor_id } = req.body;
+  const { date, hour_id, duration_id, topic_id, outline_id, instructor_id, education_type_id } = req.body;
   const user_id = req.user.id;
 
-  if (!date || !hour_id || !duration_id || !topic_id || !outline_id || !instructor_id) {
+  if (!date || !hour_id || !duration_id || !topic_id || !outline_id || !instructor_id || !education_type_id) {
     return res.status(400).json({ error: 'Hiányzó mezők a kérésben.' });
   }
 
   const sql = `
     UPDATE naplo_entries
-    SET date = ?, hour_id = ?, duration_id = ?, topic_id = ?, outline_id = ?, instructor_id = ?, user_id = ?
+    SET date = ?, hour_id = ?, duration_id = ?, topic_id = ?, outline_id = ?, instructor_id = ?, education_type_id = ?, user_id = ?
     WHERE id = ?
   `;
 
-  const params = [date, hour_id, duration_id, topic_id, outline_id, instructor_id, user_id, entryId];
+  const params = [date, hour_id, duration_id, topic_id, outline_id, instructor_id, education_type_id, user_id, entryId];
 
   db.run(sql, params, function (err) {
     if (err) {
@@ -147,7 +150,8 @@ router.get('/naplo', auth, (req, res) => {
            t.name AS topic,
            o.content AS outline,
            i.name AS instructor,
-           u.username AS user
+           u.username AS user,
+           et.name AS education_type
     FROM naplo_entries n
     JOIN hours h ON n.hour_id = h.id
     JOIN durations d ON n.duration_id = d.id
@@ -155,6 +159,7 @@ router.get('/naplo', auth, (req, res) => {
     JOIN outlines o ON n.outline_id = o.id
     JOIN instructors i ON n.instructor_id = i.id
     JOIN users u ON n.user_id = u.id
+    JOIN education_types et ON et.id = n.education_type_id
     ORDER BY n.date ASC, n.id ASC
   `;
 

@@ -78,6 +78,21 @@ router.post('/durations', auth, adminOnly, (req, res) => {
   });
 });
 
+// ✅ POST /admin/education_types – új oktatási típus felvétele
+router.post('/education_types', auth, adminOnly, (req, res) => {
+  const { name } = req.body;
+  if (!name || name.trim() === '') {
+    return res.status(400).json({ error: 'A név megadása kötelező.' });
+  }
+
+  db.run('INSERT INTO education_types (name) VALUES (?)', [name.trim()], function (err) {
+    if (err) {
+      return res.status(500).json({ error: 'Hiba az oktatási típus mentésekor.', details: err.message });
+    }
+    res.status(201).json({ message: 'Oktatási típus sikeresen hozzáadva.', id: this.lastID });
+  });
+});
+
 // 🗑️ Oktató törlése
 router.delete('/instructors/:id', auth, adminOnly, (req, res) => {
   const id = req.params.id;
@@ -134,5 +149,18 @@ router.delete('/durations/:id', auth, adminOnly, (req, res) => {
   });
 });
 
+// 🗑️ Oktatási típus törlése
+router.delete('/education_types/:id', auth, adminOnly, (req, res) => {
+  const id = req.params.id;
+  db.run('DELETE FROM education_types WHERE id = ?', [id], function (err) {
+    if (err) {
+      return res.status(500).json({ error: 'Hiba az oktatási típus törlésekor.', details: err.message });
+    }
+    if (this.changes === 0) {
+      return res.status(404).json({ error: 'Nem található ilyen oktatási típus.' });
+    }
+    res.json({ message: 'Oktatási típus sikeresen törölve.' });
+  });
+});
 
 module.exports = router;

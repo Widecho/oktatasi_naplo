@@ -97,6 +97,7 @@ if (entryForm) {
     const body = {
       date: document.getElementById('date').value,
       hour_id: parseInt(document.getElementById('hours').value),
+      education_type_id: parseInt(document.getElementById('education_types').value),
       duration_id: parseInt(document.getElementById('durations').value),
       instructor_id: parseInt(document.getElementById('instructors').value),
       topic_id: parseInt(document.getElementById('topics').value),
@@ -234,10 +235,10 @@ async function loadEntries() {
       const p = document.createElement('p');
       p.className = 'entry-item';
       p.innerHTML = `
-        <strong>${entry.hour}</strong> – ${entry.instructor} – ${entry.topic}<br>
+        <strong>${entry.hour}</strong> – ${entry.education_type} – ${entry.instructor} – ${entry.topic}<br>
         <em>${entry.outline}</em><br>
         <small>Kitöltötte: ${entry.user}</small><br>
-        <button onclick="editEntry(${entry.id}, '${entry.date}', '${entry.hour}', '${entry.duration}', '${entry.instructor}', '${entry.topic}', '${entry.outline}')">✏️</button>
+        <button onclick="editEntry(${entry.id}, '${entry.date}', '${entry.hour}', '${entry.education_type}', '${entry.duration}', '${entry.instructor}', '${entry.topic}', '${entry.outline}')">✏️</button>
         <button onclick="deleteEntry(${entry.id})">🗑️</button>
         <hr>
       `;
@@ -267,9 +268,10 @@ async function deleteEntry(id) {
   }
 }
 
-function editEntry(id, date, hour, duration, instructor, topic, outline) {
+function editEntry(id, date, hour, education_type, duration, instructor, topic, outline) {
   document.getElementById('date').value = date;
   setDropdownValue('hours', hour);
+  setDropdownValue('education_types', education_type);
   setDropdownValue('durations', duration);
   setDropdownValue('instructors', instructor);
   setDropdownValue('topics', topic);
