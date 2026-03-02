@@ -32,54 +32,35 @@ router.get('/dropdowns', (req, res) => {
   }
 });
 
-// GET /dropdowns – Összes legördülő mező tartalma
+// GET /naplo/honap/:ev/:honap paraméterezéssel szintén le kellene kezelni a műszakot, de főleg a general /naplo lesz a mérvadó a frontend filterezésnél. Ezt is patcheljük.
 router.get('/naplo/honap/:ev/:honap', auth, (req, res) => {
-  const { ev, honap } = req.params;
-  const fromDate = `${ev}-${honap.padStart(2, '0')}-01`;
-  const toDate = `${ev}-${honap.padStart(2, '0')}-31`; // egyszerűsített határ
-
-  const sql = `
-    SELECT e.*, 
-           h.name AS hour, d.value AS duration,
-           i.name AS instructor, t.name AS topic,
-           o.content AS outline, u.username AS user,
-           et.name AS education_type
-    FROM naplo_entries e
-    JOIN hours h ON h.id = e.hour_id
-    JOIN durations d ON d.id = e.duration_id
-    JOIN instructors i ON i.id = e.instructor_id
-    JOIN topics t ON t.id = e.topic_id
-    JOIN outlines o ON o.id = e.outline_id
-    JOIN users u ON u.id = e.user_id
-    JOIN education_types et ON et.id = e.education_type_id
-    WHERE e.date BETWEEN ? AND ?
-    ORDER BY e.date ASC, h.id ASC
-  `;
-
-  db.all(sql, [fromDate, toDate], (err, rows) => {
-    if (err) {
-      return res.status(500).json({ error: 'Hiba a lekérdezéskor.', details: err.message });
-    }
-    res.json(rows);
-  });
+  res.status(400).json({ error: 'Elavult végpont. A /naplo -t használd frontend szűréssel.' });
 });
 
 // POST /naplo – új bejegyzés mentése
 router.post('/naplo', auth, (req, res) => {
   const { date, hour_id, duration_id, topic_id, outline_id, instructor_id, education_type_id } = req.body;
-  const user_id = req.user.id; // 🔐 már nem jön a body-ból!
+  const user_id = req.user.id;
+  const role = req.user.role;
+  let shift = req.user.shift; // By default, use the user's token shift
 
-  if (!date || !hour_id || !duration_id || !topic_id || !outline_id || !instructor_id || !education_type_id) {
+  // Ha admin, akkor a frontendről jön a kiválasztott shift
+  if (role === 'admin') {
+    shift = req.body.shift;
+    if (!shift) return res.status(400).json({ error: 'Műszak megadása kötelező az adminnak is.' });
+  }
+
+  if (!date || !hour_id || !duration_id || !topic_id || !outline_id || !instructor_id || !education_type_id || !shift) {
     return res.status(400).json({ error: 'Hiányzó mezők a kérésben.' });
   }
 
   const sql = `
     INSERT INTO naplo_entries 
-    (date, hour_id, duration_id, topic_id, outline_id, instructor_id, education_type_id, user_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    (date, hour_id, duration_id, topic_id, outline_id, instructor_id, education_type_id, user_id, shift)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
-  const params = [date, hour_id, duration_id, topic_id, outline_id, instructor_id, education_type_id, user_id];
+  const params = [date, hour_id, duration_id, topic_id, outline_id, instructor_id, education_type_id, user_id, shift];
 
   db.run(sql, params, function (err) {
     if (err) {
@@ -94,18 +75,25 @@ router.put('/naplo/:id', auth, (req, res) => {
   const entryId = req.params.id;
   const { date, hour_id, duration_id, topic_id, outline_id, instructor_id, education_type_id } = req.body;
   const user_id = req.user.id;
+  const role = req.user.role;
+  let shift = req.user.shift;
 
-  if (!date || !hour_id || !duration_id || !topic_id || !outline_id || !instructor_id || !education_type_id) {
+  if (role === 'admin') {
+    shift = req.body.shift;
+    if (!shift) return res.status(400).json({ error: 'Műszak megadása kötelező az adminnak is.' });
+  }
+
+  if (!date || !hour_id || !duration_id || !topic_id || !outline_id || !instructor_id || !education_type_id || !shift) {
     return res.status(400).json({ error: 'Hiányzó mezők a kérésben.' });
   }
 
   const sql = `
     UPDATE naplo_entries
-    SET date = ?, hour_id = ?, duration_id = ?, topic_id = ?, outline_id = ?, instructor_id = ?, education_type_id = ?, user_id = ?
+    SET date = ?, hour_id = ?, duration_id = ?, topic_id = ?, outline_id = ?, instructor_id = ?, education_type_id = ?, user_id = ?, shift = ?
     WHERE id = ?
   `;
 
-  const params = [date, hour_id, duration_id, topic_id, outline_id, instructor_id, education_type_id, user_id, entryId];
+  const params = [date, hour_id, duration_id, topic_id, outline_id, instructor_id, education_type_id, user_id, shift, entryId];
 
   db.run(sql, params, function (err) {
     if (err) {
@@ -143,8 +131,21 @@ router.delete('/naplo/:id', auth, (req, res) => {
 });
 
 router.get('/naplo', auth, (req, res) => {
+  const role = req.user.role;
+  const shift = req.user.shift;
+
+  // Let the user filter by 'kombinált' naturally on frontend if they like, but the backend restricts data:
+  let shiftCondition = '';
+  let params = [];
+
+  if (role !== 'admin' && shift) {
+    // A regular user only sees their own shift OR 'kombinált'
+    shiftCondition = "WHERE n.shift = ? OR n.shift = 'kombinált' OR n.shift = 'Kombinált'";
+    params.push(shift);
+  }
+
   const sql = `
-    SELECT n.id, n.date,
+    SELECT n.id, n.date, n.shift,
            h.name AS hour,
            d.value AS duration,
            t.name AS topic,
@@ -160,10 +161,11 @@ router.get('/naplo', auth, (req, res) => {
     JOIN instructors i ON n.instructor_id = i.id
     JOIN users u ON n.user_id = u.id
     JOIN education_types et ON et.id = n.education_type_id
+    ${shiftCondition}
     ORDER BY n.date ASC, n.id ASC
   `;
 
-  db.all(sql, [], (err, rows) => {
+  db.all(sql, params, (err, rows) => {
     if (err) {
       return res.status(500).json({ error: 'Hiba a naplóbejegyzések lekérdezésekor.', details: err.message });
     }

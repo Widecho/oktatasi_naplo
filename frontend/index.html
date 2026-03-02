@@ -16,6 +16,15 @@
 
     <select id="hours" required></select>
     <select id="education_types" required></select>
+    <select id="shift" style="display:none;">
+      <option value="" disabled selected>Válassz műszakot!</option>
+      <option value="1">1. Műszak</option>
+      <option value="2">2. Műszak</option>
+      <option value="3">3. Műszak</option>
+      <option value="4">4. Műszak</option>
+      <option value="5">5. Műszak</option>
+      <option value="kombinált">Kombinált (mindenkire vonatkozik)</option>
+    </select>
     <select id="durations" required></select>
     <select id="instructors" required></select>
     <select id="topics" required></select>
@@ -53,6 +62,19 @@
       <input type="date" id="startDate">
       <label for="endDate"><strong>Záró dátum:</strong></label>
       <input type="date" id="endDate">
+    </span>
+
+    <span id="shiftFilterContainer" style="display: none;">
+      <label for="filterShift"><strong>Műszak szűrés:</strong></label>
+      <select id="filterShift">
+        <option value="Összes">Összes</option>
+        <option value="1">1. Műszak</option>
+        <option value="2">2. Műszak</option>
+        <option value="3">3. Műszak</option>
+        <option value="4">4. Műszak</option>
+        <option value="5">5. Műszak</option>
+        <option value="kombinált">Kombinált</option>
+      </select>
     </span>
 
     <button onclick="loadEntries()">📅 Megjelenítés</button>

@@ -12,6 +12,15 @@
     <form id="registerForm">
         <input type="text" id="regUsername" placeholder="Felhasználónév" required>
         <input type="password" id="regPassword" placeholder="Jelszó (min. 1 szám)" required>
+
+        <select id="regShift" required>
+            <option value="" disabled selected>Válassz műszakot!</option>
+            <option value="1">1. Műszak</option>
+            <option value="2">2. Műszak</option>
+            <option value="3">3. Műszak</option>
+            <option value="4">4. Műszak</option>
+            <option value="5">5. Műszak</option>
+        </select>
         <input type="text" id="secretCode"
             placeholder="Titkos kód (admin felhasználó létrehozásához add meg a szupertitkos kódot) )">
         <button type="submit">Regisztráció</button>

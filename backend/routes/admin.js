@@ -163,4 +163,40 @@ router.delete('/education_types/:id', auth, adminOnly, (req, res) => {
   });
 });
 
+// --- USER MANAGEMENT ---
+
+// Felhasználók listázása (csak a normál userek)
+router.get('/users', auth, adminOnly, (req, res) => {
+  db.all('SELECT id, username, role, shift, must_change_password FROM users WHERE role = "user"', (err, rows) => {
+    if (err) return res.status(500).json({ error: 'Hiba a felhasználók betöltésekor' });
+    res.json(rows);
+  });
+});
+
+// Felhasználó jelszavának resetelése
+router.post('/users/:id/reset-password', auth, adminOnly, async (req, res) => {
+  const userId = req.params.id;
+  const defaultPassword = await require('bcryptjs').hash('asd123', 10);
+
+  db.run('UPDATE users SET password_hash = ?, must_change_password = 1 WHERE id = ?', [defaultPassword, userId], function (err) {
+    if (err) return res.status(500).json({ error: 'Hiba a jelszó reset során.' });
+    if (this.changes === 0) return res.status(404).json({ error: 'Felhasználó nem található.' });
+    res.json({ message: 'Jelszó sikeresen visszaállítva az "asd123" értékre.' });
+  });
+});
+
+// Felhasználó műszakjának frissítése
+router.put('/users/:id/shift', auth, adminOnly, (req, res) => {
+  const userId = req.params.id;
+  const { shift } = req.body;
+
+  if (!shift) return res.status(400).json({ error: 'A műszak megadása kötelező.' });
+
+  db.run('UPDATE users SET shift = ? WHERE id = ?', [shift, userId], function (err) {
+    if (err) return res.status(500).json({ error: 'Hiba a műszak frissítésekor.' });
+    if (this.changes === 0) return res.status(404).json({ error: 'Felhasználó nem található.' });
+    res.json({ message: 'Műszak sikeresen frissítve.' });
+  });
+});
+
 module.exports = router;

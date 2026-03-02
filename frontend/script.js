@@ -23,9 +23,50 @@ if (loginForm) {
     const data = await res.json();
     if (res.ok) {
       localStorage.setItem('token', data.token);
-      window.location.href = 'index.html';
+      try {
+        const payload = JSON.parse(atob(data.token.split('.')[1]));
+        localStorage.setItem('role', payload.role);
+        localStorage.setItem('shift', payload.shift || '');
+      } catch (e) { }
+
+      if (data.mustChangePassword) {
+        document.getElementById('loginForm').style.display = 'none';
+        document.getElementById('changePasswordModal').style.display = 'block';
+        document.getElementById('error').textContent = '';
+      } else {
+        window.location.href = 'index.html';
+      }
     } else {
       document.getElementById('error').textContent = data.error || 'Hiba';
+    }
+  });
+}
+
+// 🔑 Kötelező jelszóváltoztatás
+const changePasswordForm = document.getElementById('changePasswordForm');
+if (changePasswordForm) {
+  changePasswordForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const newPassword = document.getElementById('newPassword').value;
+
+    try {
+      const res = await fetch(`${API_URL}/change-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ newPassword })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert('Sikeres jelszóváltoztatás!');
+        window.location.href = 'index.html';
+      } else {
+        document.getElementById('changePasswordError').textContent = data.error;
+      }
+    } catch (err) {
+      document.getElementById('changePasswordError').textContent = 'Hiba történt a csatlakozáskor.';
     }
   });
 }
@@ -33,16 +74,33 @@ if (loginForm) {
 // ✅ Regisztráció oldal logika
 const registerForm = document.getElementById('registerForm');
 if (registerForm) {
+  const secretCodeInput = document.getElementById('secretCode');
+  const shiftSelect = document.getElementById('regShift');
+
+  if (secretCodeInput && shiftSelect) {
+    secretCodeInput.addEventListener('input', () => {
+      if (secretCodeInput.value === 'cicakutya') {
+        shiftSelect.style.display = 'none';
+        shiftSelect.required = false;
+        shiftSelect.value = '';
+      } else {
+        shiftSelect.style.display = 'block';
+        shiftSelect.required = true;
+      }
+    });
+  }
+
   registerForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const username = document.getElementById('regUsername').value;
     const password = document.getElementById('regPassword').value;
     const secretCode = document.getElementById('secretCode').value;
+    const shift = document.getElementById('regShift') ? document.getElementById('regShift').value : null;
 
     const res = await fetch(`${API_URL}/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password, secretCode })
+      body: JSON.stringify({ username, password, secretCode, shift })
     });
 
     const data = await res.json();
@@ -67,8 +125,28 @@ if (entryForm) {
     if (decoded.role === 'admin') {
       const adminBtn = document.createElement('a');
       adminBtn.href = 'admin.html';
-      adminBtn.innerHTML = '<button type="button">⚙️ Admin felület</button>';
-      document.body.insertBefore(adminBtn, entryForm);
+      adminBtn.innerHTML = '<button type="button" style="margin-right:10px;">⚙️ Admin felület</button>';
+
+      const managementBtn = document.createElement('a');
+      managementBtn.href = 'management.html';
+      managementBtn.innerHTML = '<button type="button">👥 Felhasználó Menedzsment</button>';
+
+      const container = document.createElement('div');
+      container.style.marginBottom = '20px';
+      container.appendChild(adminBtn);
+      container.appendChild(managementBtn);
+
+      document.body.insertBefore(container, entryForm);
+
+      const shiftSelectBtn = document.getElementById('shift');
+      if (shiftSelectBtn) {
+        shiftSelectBtn.style.display = 'inline-block';
+        shiftSelectBtn.required = true;
+      }
+      const filterShiftContainer = document.getElementById('shiftFilterContainer');
+      if (filterShiftContainer) {
+        filterShiftContainer.style.display = 'inline';
+      }
     }
   } catch (err) {
     console.warn('Token dekódolása sikertelen:', err);
@@ -103,6 +181,12 @@ if (entryForm) {
       topic_id: parseInt(document.getElementById('topics').value),
       outline_id: parseInt(document.getElementById('outlines').value)
     };
+
+    // Add shift if visible
+    const shiftSelect = document.getElementById('shift');
+    if (shiftSelect && shiftSelect.style.display !== 'none') {
+      body.shift = shiftSelect.value;
+    }
 
     let url = `${API_URL}/naplo`;
     let method = 'POST';
@@ -218,6 +302,15 @@ async function loadEntries() {
     });
   }
 
+  // Admin shift filter logic purely on frontend just to reflect display
+  const filterShiftContainer = document.getElementById('shiftFilterContainer');
+  if (filterShiftContainer && filterShiftContainer.style.display !== 'none') {
+    const selectedShift = document.getElementById('filterShift').value;
+    if (selectedShift !== 'Összes') {
+      filtered = filtered.filter(e => e.shift === selectedShift);
+    }
+  }
+
   const grouped = {};
   filtered.forEach(e => {
     if (!grouped[e.date]) grouped[e.date] = [];
@@ -233,12 +326,13 @@ async function loadEntries() {
 
     grouped[date].forEach(entry => {
       const p = document.createElement('p');
+      const shiftStr = entry.shift ? `[${entry.shift}]` : '';
       p.className = 'entry-item';
       p.innerHTML = `
-        <strong>${entry.hour}</strong> – ${entry.education_type} – ${entry.instructor} – ${entry.topic}<br>
+        <strong>${entry.hour}</strong> ${shiftStr} – ${entry.education_type} – ${entry.instructor} – ${entry.topic}<br>
         <em>${entry.outline}</em><br>
         <small>Kitöltötte: ${entry.user}</small><br>
-        <button onclick="editEntry(${entry.id}, '${entry.date}', '${entry.hour}', '${entry.education_type}', '${entry.duration}', '${entry.instructor}', '${entry.topic}', '${entry.outline}')">✏️</button>
+        <button onclick="editEntry(${entry.id}, '${entry.date}', '${entry.hour}', '${entry.education_type}', '${entry.duration}', '${entry.instructor}', '${entry.topic}', '${entry.outline}', '${entry.shift || ''}')">✏️</button>
         <button onclick="deleteEntry(${entry.id})">🗑️</button>
         <hr>
       `;
@@ -268,7 +362,7 @@ async function deleteEntry(id) {
   }
 }
 
-function editEntry(id, date, hour, education_type, duration, instructor, topic, outline) {
+function editEntry(id, date, hour, education_type, duration, instructor, topic, outline, shift) {
   document.getElementById('date').value = date;
   setDropdownValue('hours', hour);
   setDropdownValue('education_types', education_type);
@@ -276,6 +370,13 @@ function editEntry(id, date, hour, education_type, duration, instructor, topic, 
   setDropdownValue('instructors', instructor);
   setDropdownValue('topics', topic);
   setDropdownValue('outlines', outline);
+
+  if (shift) {
+    const shiftSelect = document.getElementById('shift');
+    if (shiftSelect && shiftSelect.style.display !== 'none') {
+      shiftSelect.value = shift;
+    }
+  }
 
   editingId = id;
   document.getElementById('response').textContent = '✏️ Szerkesztési mód: módosítasz egy bejegyzést.';
@@ -319,6 +420,15 @@ function exportToExcel() {
     if (!start || !end) return alert('Válaszd ki a kezdő és végdátumot!');
     url += `&start=${start}&end=${end}`;
   }
+
+  const filterShiftContainer = document.getElementById('shiftFilterContainer');
+  if (filterShiftContainer && filterShiftContainer.style.display !== 'none') {
+    const shift = document.getElementById('filterShift').value;
+    url += `&shift=${shift}`;
+  }
+
+  // Attach token
+  url += `&token=${localStorage.getItem('token')}`;
 
   window.open(url, '_blank');
 }
