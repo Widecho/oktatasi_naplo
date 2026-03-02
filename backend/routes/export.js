@@ -37,8 +37,8 @@ router.get('/export', auth, async (req, res) => {
 
   // Shift logic based on role
   if (userRole !== 'admin' && userShift) {
-    // Users only see their shift or 'kombinált'
-    whereClauses.push("(naplo_entries.shift = ? OR naplo_entries.shift = 'kombinált' OR naplo_entries.shift = 'Kombinált')");
+    // Users only see their shift
+    whereClauses.push("naplo_entries.shift = ?");
     queryParams.push(userShift);
   } else if (userRole === 'admin' && shift && shift !== 'Összes') {
     // Admin selected a specific shift

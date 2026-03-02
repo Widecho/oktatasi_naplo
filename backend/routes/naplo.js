@@ -139,8 +139,8 @@ router.get('/naplo', auth, (req, res) => {
   let params = [];
 
   if (role !== 'admin' && shift) {
-    // A regular user only sees their own shift OR 'kombinált'
-    shiftCondition = "WHERE n.shift = ? OR n.shift = 'kombinált' OR n.shift = 'Kombinált'";
+    // A regular user only sees their own shift
+    shiftCondition = "WHERE n.shift = ?";
     params.push(shift);
   }
 
