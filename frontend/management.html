@@ -2,39 +2,36 @@
 <html lang="hu">
 
 <head>
-    <meta charset="UTF-8">
-    <title>Felhasználó Menedzsment</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <title>Felhasználó menedzsment</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
-    <button onclick="window.location.href='index.html'" style="float: left;">⬅️ Vissza a Naplóra</button>
-    <button onclick="logout()" style="float: right;">🚪 Kijelentkezés</button>
+  <button onclick="window.location.href='index.html'" style="float: left;">Vissza a naplóhoz</button>
+  <button onclick="logout()" style="float: right;">Kijelentkezés</button>
 
-    <h1>Felhasználó Menedzsment</h1>
+  <h1>Felhasználó menedzsment</h1>
 
-    <p>Admin felület: Itt láthatod a normál felhasználókat, módosíthatod a műszakjukat, és alaphelyzetbe állíthatod a
-        jelszavukat (asd123).</p>
+  <p>Admin felület: itt láthatod a normál felhasználókat, módosíthatod a műszakjukat, és alaphelyzetbe állíthatod a jelszavukat.</p>
 
-    <hr>
+  <hr>
 
-    <table id="usersTable" border="1" style="width: 100%; text-align: left; margin-top: 20px;">
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Név</th>
-                <th>Műszak</th>
-                <th>Műveletek</th>
-            </tr>
-        </thead>
-        <tbody>
-            <!-- Users loaded dynamically -->
-        </tbody>
-    </table>
+  <table id="usersTable" border="1" style="width: 100%; text-align: left; margin-top: 20px;">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Név</th>
+        <th>Műszak</th>
+        <th>Műveletek</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
 
-    <p id="managementMessage" style="color: green; font-weight: bold; margin-top: 20px;"></p>
+  <p id="managementMessage" style="color: green; font-weight: bold; margin-top: 20px;"></p>
 
-    <script src="management.js"></script>
+  <script src="management.js"></script>
 </body>
 
 </html>

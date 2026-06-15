@@ -1,17 +1,73 @@
 const API_URL = 'http://localhost:3000/api';
+const ALL_SHIFTS_LABEL = 'Összes';
+
 let editingId = null;
+
+function getToken() {
+  return localStorage.getItem('token');
+}
+
+function decodeToken() {
+  const token = getToken();
+  if (!token) return null;
+
+  try {
+    return JSON.parse(atob(token.split('.')[1]));
+  } catch (err) {
+    return null;
+  }
+}
+
+function authHeaders(extraHeaders = {}) {
+  return {
+    ...extraHeaders,
+    Authorization: `Bearer ${getToken()}`
+  };
+}
 
 function logout() {
   localStorage.removeItem('token');
+  localStorage.removeItem('role');
+  localStorage.removeItem('shift');
   window.location.href = 'login.html';
 }
 
-// ✅ Login oldal logika
+function requireLogin() {
+  if (!getToken() || !decodeToken()) {
+    window.location.href = 'login.html';
+    return null;
+  }
+
+  return decodeToken();
+}
+
+function setMessage(elementId, message) {
+  const element = document.getElementById(elementId);
+  if (element) element.textContent = message;
+}
+
+function createButton(label, onClick, type = 'button') {
+  const button = document.createElement('button');
+  button.type = type;
+  button.textContent = label;
+  button.addEventListener('click', onClick);
+  return button;
+}
+
+function currentDateString() {
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 const loginForm = document.getElementById('loginForm');
 if (loginForm) {
   loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const username = document.getElementById('username').value;
+
+    const username = document.getElementById('username').value.trim();
     const password = document.getElementById('password').value;
 
     const res = await fetch(`${API_URL}/login`, {
@@ -21,28 +77,28 @@ if (loginForm) {
     });
 
     const data = await res.json();
-    if (res.ok) {
-      localStorage.setItem('token', data.token);
-      try {
-        const payload = JSON.parse(atob(data.token.split('.')[1]));
-        localStorage.setItem('role', payload.role);
-        localStorage.setItem('shift', payload.shift || '');
-      } catch (e) { }
+    if (!res.ok) {
+      setMessage('error', data.error || 'Hiba történt a bejelentkezéskor.');
+      return;
+    }
 
-      if (data.mustChangePassword) {
-        document.getElementById('loginForm').style.display = 'none';
-        document.getElementById('changePasswordModal').style.display = 'block';
-        document.getElementById('error').textContent = '';
-      } else {
-        window.location.href = 'index.html';
-      }
+    localStorage.setItem('token', data.token);
+    const payload = decodeToken();
+    if (payload) {
+      localStorage.setItem('role', payload.role);
+      localStorage.setItem('shift', payload.shift || '');
+    }
+
+    if (data.mustChangePassword) {
+      loginForm.style.display = 'none';
+      document.getElementById('changePasswordModal').style.display = 'block';
+      setMessage('error', '');
     } else {
-      document.getElementById('error').textContent = data.error || 'Hiba';
+      window.location.href = 'index.html';
     }
   });
 }
 
-// 🔑 Kötelező jelszóváltoztatás
 const changePasswordForm = document.getElementById('changePasswordForm');
 if (changePasswordForm) {
   changePasswordForm.addEventListener('submit', async (e) => {
@@ -52,26 +108,24 @@ if (changePasswordForm) {
     try {
       const res = await fetch(`${API_URL}/change-password`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ newPassword })
       });
       const data = await res.json();
-      if (res.ok) {
-        alert('Sikeres jelszóváltoztatás!');
-        window.location.href = 'index.html';
-      } else {
-        document.getElementById('changePasswordError').textContent = data.error;
+
+      if (!res.ok) {
+        setMessage('changePasswordError', data.error || 'A jelszó módosítása sikertelen.');
+        return;
       }
+
+      alert('Sikeres jelszóváltoztatás!');
+      window.location.href = 'index.html';
     } catch (err) {
-      document.getElementById('changePasswordError').textContent = 'Hiba történt a csatlakozáskor.';
+      setMessage('changePasswordError', 'Hiba történt a csatlakozáskor.');
     }
   });
 }
 
-// ✅ Regisztráció oldal logika
 const registerForm = document.getElementById('registerForm');
 if (registerForm) {
   const secretCodeInput = document.getElementById('secretCode');
@@ -79,23 +133,20 @@ if (registerForm) {
 
   if (secretCodeInput && shiftSelect) {
     secretCodeInput.addEventListener('input', () => {
-      if (secretCodeInput.value === 'cicakutya') {
-        shiftSelect.style.display = 'none';
-        shiftSelect.required = false;
-        shiftSelect.value = '';
-      } else {
-        shiftSelect.style.display = 'block';
-        shiftSelect.required = true;
-      }
+      const isAdmin = secretCodeInput.value === 'cicakutya';
+      shiftSelect.style.display = isAdmin ? 'none' : 'block';
+      shiftSelect.required = !isAdmin;
+      if (isAdmin) shiftSelect.value = '';
     });
   }
 
   registerForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const username = document.getElementById('regUsername').value;
+
+    const username = document.getElementById('regUsername').value.trim();
     const password = document.getElementById('regPassword').value;
     const secretCode = document.getElementById('secretCode').value;
-    const shift = document.getElementById('regShift') ? document.getElementById('regShift').value : null;
+    const shift = shiftSelect ? shiftSelect.value : null;
 
     const res = await fetch(`${API_URL}/register`, {
       method: 'POST',
@@ -104,143 +155,132 @@ if (registerForm) {
     });
 
     const data = await res.json();
-    const msgElement = document.getElementById('regMessage');
-    msgElement.textContent = res.ok ? '✅ Regisztráció sikeres!' : `❌ ${data.error}`;
+    setMessage('regMessage', res.ok ? 'Regisztráció sikeres!' : data.error || 'Regisztráció sikertelen.');
 
     if (res.ok) {
-      setTimeout(() => window.location.href = 'login.html', 1500);
+      setTimeout(() => {
+        window.location.href = 'login.html';
+      }, 1500);
     }
   });
 }
 
-// ✅ Napló oldal logika
 const entryForm = document.getElementById('entryForm');
 if (entryForm) {
+  const user = requireLogin();
   const cancelBtn = document.getElementById('cancelEdit');
-  setTodayDate();
-  const token = localStorage.getItem('token');
 
-  try {
-    const decoded = JSON.parse(atob(token.split('.')[1]));
-    if (decoded.role === 'admin') {
-      const adminBtn = document.createElement('a');
-      adminBtn.href = 'admin.html';
-      adminBtn.innerHTML = '<button type="button" style="margin-right:10px;">⚙️ Admin felület</button>';
-
-      const managementBtn = document.createElement('a');
-      managementBtn.href = 'management.html';
-      managementBtn.innerHTML = '<button type="button">👥 Felhasználó Menedzsment</button>';
-
-      const container = document.createElement('div');
-      container.style.marginBottom = '20px';
-      container.appendChild(adminBtn);
-      container.appendChild(managementBtn);
-
-      document.body.insertBefore(container, entryForm);
-
-      const shiftSelectBtn = document.getElementById('shift');
-      if (shiftSelectBtn) {
-        shiftSelectBtn.style.display = 'inline-block';
-        shiftSelectBtn.required = true;
-      }
-      const filterShiftContainer = document.getElementById('shiftFilterContainer');
-      if (filterShiftContainer) {
-        filterShiftContainer.style.display = 'inline';
-      }
-    }
-  } catch (err) {
-    console.warn('Token dekódolása sikertelen:', err);
+  if (user) {
+    setTodayDate();
+    setupAdminLinks(user);
+    loadDropdowns();
+    populateMonthSelect();
+    initDateFilters();
+    loadEntries();
   }
-
-  fetch(`${API_URL}/dropdowns`)
-    .then(res => res.json())
-    .then(data => {
-      for (const [key, list] of Object.entries(data)) {
-        const select = document.getElementById(key);
-        if (!select) continue;
-
-        list.forEach(item => {
-          const option = document.createElement('option');
-          option.value = item.id;
-          option.textContent = item.name || item.value || item.content;
-          select.appendChild(option);
-        });
-      }
-    })
-    .catch(err => console.error('Hiba a legördülők betöltésekor:', err));
 
   entryForm.addEventListener('submit', async (e) => {
     e.preventDefault();
 
     const body = {
       date: document.getElementById('date').value,
-      hour_id: parseInt(document.getElementById('hours').value),
-      education_type_id: parseInt(document.getElementById('education_types').value),
-      duration_id: parseInt(document.getElementById('durations').value),
-      instructor_id: parseInt(document.getElementById('instructors').value),
-      topic_id: parseInt(document.getElementById('topics').value),
-      outline_id: parseInt(document.getElementById('outlines').value)
+      hour_id: Number(document.getElementById('hours').value),
+      education_type_id: Number(document.getElementById('education_types').value),
+      duration_id: Number(document.getElementById('durations').value),
+      instructor_id: Number(document.getElementById('instructors').value),
+      topic_id: Number(document.getElementById('topics').value),
+      outline_id: Number(document.getElementById('outlines').value)
     };
 
-    // Add shift if visible
     const shiftSelect = document.getElementById('shift');
     if (shiftSelect && shiftSelect.style.display !== 'none') {
       body.shift = shiftSelect.value;
     }
 
-    let url = `${API_URL}/naplo`;
-    let method = 'POST';
-
-    if (editingId !== null) {
-      url += `/${editingId}`;
-      method = 'PUT';
-    }
+    const url = editingId === null ? `${API_URL}/naplo` : `${API_URL}/naplo/${editingId}`;
+    const method = editingId === null ? 'POST' : 'PUT';
 
     const res = await fetch(url, {
       method,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(body)
     });
 
     const data = await res.json();
-    document.getElementById('response').textContent = res.ok
-      ? editingId ? 'Bejegyzés frissítve.' : 'Sikeres mentés!'
-      : data.error;
+    setMessage('response', res.ok
+      ? editingId === null ? 'Sikeres mentés!' : 'Bejegyzés frissítve.'
+      : data.error || 'A mentés sikertelen.');
 
     if (res.ok) {
-      entryForm.reset();
-      setTodayDate();
-      editingId = null;
-      entryForm.classList.remove('editing-mode');
-      cancelBtn.style.display = 'none';
+      resetEntryForm();
       loadEntries();
     }
   });
 
   cancelBtn.addEventListener('click', () => {
-    entryForm.reset();
-    setTodayDate();
-    editingId = null;
-    entryForm.classList.remove('editing-mode');
-    cancelBtn.style.display = 'none';
-    document.getElementById('response').textContent = 'Szerkesztés megszakítva.';
+    resetEntryForm();
+    setMessage('response', 'Szerkesztés megszakítva.');
   });
+}
 
-  populateMonthSelect();
-  initDateFilters();
-  loadEntries();
+function setupAdminLinks(user) {
+  if (user.role !== 'admin') return;
+
+  const container = document.createElement('div');
+  container.className = 'top-actions';
+
+  const adminLink = document.createElement('a');
+  adminLink.href = 'admin.html';
+  adminLink.appendChild(createButton('Admin felület', () => {}));
+
+  const managementLink = document.createElement('a');
+  managementLink.href = 'management.html';
+  managementLink.appendChild(createButton('Felhasználó menedzsment', () => {}));
+
+  container.appendChild(adminLink);
+  container.appendChild(managementLink);
+  document.body.insertBefore(container, entryForm);
+
+  const shiftSelect = document.getElementById('shift');
+  if (shiftSelect) {
+    shiftSelect.style.display = 'inline-block';
+    shiftSelect.required = true;
+  }
+
+  const filterShiftContainer = document.getElementById('shiftFilterContainer');
+  if (filterShiftContainer) {
+    filterShiftContainer.style.display = 'inline';
+  }
+}
+
+async function loadDropdowns() {
+  try {
+    const res = await fetch(`${API_URL}/dropdowns`);
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.error || 'A legördülő adatok betöltése sikertelen.');
+    }
+
+    Object.entries(data).forEach(([key, list]) => {
+      const select = document.getElementById(key);
+      if (!select) return;
+
+      select.innerHTML = '';
+      list.forEach(item => {
+        const option = document.createElement('option');
+        option.value = item.id;
+        option.textContent = item.name || item.value || item.content;
+        select.appendChild(option);
+      });
+    });
+  } catch (err) {
+    setMessage('response', err.message);
+  }
 }
 
 function initDateFilters() {
-  const today = new Date();
-  const yyyy = today.getFullYear();
-  const mm = String(today.getMonth() + 1).padStart(2, '0');
-  const dd = String(today.getDate()).padStart(2, '0');
-  const todayStr = `${yyyy}-${mm}-${dd}`;
-
+  const todayStr = currentDateString();
   if (document.getElementById('daySelect')) document.getElementById('daySelect').value = todayStr;
   if (document.getElementById('startDate')) document.getElementById('startDate').value = todayStr;
   if (document.getElementById('endDate')) document.getElementById('endDate').value = todayStr;
@@ -248,8 +288,11 @@ function initDateFilters() {
 
 function populateMonthSelect() {
   const monthSelect = document.getElementById('monthSelect');
+  if (!monthSelect) return;
+
   const now = new Date();
   const year = now.getFullYear();
+  monthSelect.innerHTML = '';
 
   for (let m = 1; m <= 12; m++) {
     const option = document.createElement('option');
@@ -262,12 +305,11 @@ function populateMonthSelect() {
 }
 
 async function loadEntries() {
-  const token = localStorage.getItem('token');
   const container = document.getElementById('entryList');
   if (!container) return;
 
   const res = await fetch(`${API_URL}/naplo`, {
-    headers: { 'Authorization': `Bearer ${token}` }
+    headers: authHeaders()
   });
 
   if (!res.ok) {
@@ -276,123 +318,146 @@ async function loadEntries() {
   }
 
   const entries = await res.json();
-
-  const filterType = document.getElementById('filterType') ? document.getElementById('filterType').value : 'month';
-  let filtered = [];
-
-  if (filterType === 'month') {
-    const monthSelect = document.getElementById('monthSelect');
-    const selectedMonth = monthSelect ? monthSelect.value : new Date().toISOString().slice(0, 7);
-    filtered = entries.filter(e => e.date.startsWith(selectedMonth));
-  } else if (filterType === 'day') {
-    const selectedDay = document.getElementById('daySelect').value;
-    if (selectedDay) {
-      filtered = entries.filter(e => e.date === selectedDay);
-    } else {
-      filtered = entries;
-    }
-  } else if (filterType === 'interval') {
-    const start = document.getElementById('startDate').value;
-    const end = document.getElementById('endDate').value;
-    filtered = entries.filter(e => {
-      let isMatch = true;
-      if (start && e.date < start) isMatch = false;
-      if (end && e.date > end) isMatch = false;
-      return isMatch;
-    });
-  }
-
-  // Admin shift filter logic purely on frontend just to reflect display
-  const filterShiftContainer = document.getElementById('shiftFilterContainer');
-  if (filterShiftContainer && filterShiftContainer.style.display !== 'none') {
-    const selectedShift = document.getElementById('filterShift').value;
-    if (selectedShift !== 'Összes') {
-      filtered = filtered.filter(e => e.shift === selectedShift);
-    }
-  }
-
-  const grouped = {};
-  filtered.forEach(e => {
-    if (!grouped[e.date]) grouped[e.date] = [];
-    grouped[e.date].push(e);
-  });
+  const filtered = filterEntries(entries);
+  const grouped = groupEntriesByDate(filtered);
 
   container.innerHTML = '';
+  if (Object.keys(grouped).length === 0) {
+    container.innerHTML = '<p><i>Nincs megjeleníthető bejegyzés.</i></p>';
+    return;
+  }
 
   Object.keys(grouped).sort().forEach(date => {
     const dayDiv = document.createElement('div');
     dayDiv.className = 'day-group';
-    dayDiv.innerHTML = `<h3>${date}</h3>`;
+
+    const title = document.createElement('h3');
+    title.textContent = date;
+    dayDiv.appendChild(title);
 
     grouped[date].forEach(entry => {
-      const p = document.createElement('p');
-      const shiftStr = entry.shift ? `[${entry.shift}]` : '';
-      p.className = 'entry-item';
-      p.innerHTML = `
-        <strong>${entry.hour}</strong> ${shiftStr} – ${entry.education_type} – ${entry.instructor} – ${entry.topic}<br>
-        <em>${entry.outline}</em><br>
-        <small>Kitöltötte: ${entry.user}</small><br>
-        <button onclick="editEntry(${entry.id}, '${entry.date}', '${entry.hour}', '${entry.education_type}', '${entry.duration}', '${entry.instructor}', '${entry.topic}', '${entry.outline}', '${entry.shift || ''}')">✏️</button>
-        <button onclick="deleteEntry(${entry.id})">🗑️</button>
-        <hr>
-      `;
-      dayDiv.appendChild(p);
+      dayDiv.appendChild(renderEntry(entry));
     });
 
     container.appendChild(dayDiv);
   });
 }
 
+function filterEntries(entries) {
+  const filterType = document.getElementById('filterType') ? document.getElementById('filterType').value : 'month';
+  let filtered = entries;
 
+  if (filterType === 'month') {
+    const selectedMonth = document.getElementById('monthSelect')?.value || new Date().toISOString().slice(0, 7);
+    filtered = entries.filter(e => e.date.startsWith(selectedMonth));
+  } else if (filterType === 'day') {
+    const selectedDay = document.getElementById('daySelect').value;
+    filtered = selectedDay ? entries.filter(e => e.date === selectedDay) : entries;
+  } else if (filterType === 'interval') {
+    const start = document.getElementById('startDate').value;
+    const end = document.getElementById('endDate').value;
+    filtered = entries.filter(e => (!start || e.date >= start) && (!end || e.date <= end));
+  }
+
+  const filterShiftContainer = document.getElementById('shiftFilterContainer');
+  if (filterShiftContainer && filterShiftContainer.style.display !== 'none') {
+    const selectedShift = document.getElementById('filterShift').value;
+    if (selectedShift !== ALL_SHIFTS_LABEL) {
+      filtered = filtered.filter(e => e.shift === selectedShift);
+    }
+  }
+
+  return filtered;
+}
+
+function groupEntriesByDate(entries) {
+  return entries.reduce((grouped, entry) => {
+    if (!grouped[entry.date]) grouped[entry.date] = [];
+    grouped[entry.date].push(entry);
+    return grouped;
+  }, {});
+}
+
+function renderEntry(entry) {
+  const item = document.createElement('div');
+  item.className = 'entry-item';
+
+  const summary = document.createElement('p');
+  const shiftStr = entry.shift ? ` [${entry.shift}]` : '';
+  const strong = document.createElement('strong');
+  strong.textContent = entry.hour;
+  summary.appendChild(strong);
+  summary.appendChild(document.createTextNode(`${shiftStr} - ${entry.education_type} - ${entry.instructor} - ${entry.topic}`));
+
+  const outline = document.createElement('em');
+  outline.textContent = entry.outline;
+
+  const user = document.createElement('small');
+  user.textContent = `Kitöltötte: ${entry.user}`;
+
+  const actions = document.createElement('div');
+  actions.className = 'entry-actions';
+  actions.appendChild(createButton('Szerkesztés', () => editEntry(entry)));
+  actions.appendChild(createButton('Törlés', () => deleteEntry(entry.id)));
+
+  item.appendChild(summary);
+  item.appendChild(outline);
+  item.appendChild(document.createElement('br'));
+  item.appendChild(user);
+  item.appendChild(actions);
+
+  return item;
+}
 
 async function deleteEntry(id) {
-  const token = localStorage.getItem('token');
   if (!confirm('Biztosan törlöd ezt a bejegyzést?')) return;
 
   const res = await fetch(`${API_URL}/naplo/${id}`, {
     method: 'DELETE',
-    headers: { 'Authorization': `Bearer ${token}` }
+    headers: authHeaders()
   });
 
   if (res.ok) {
     alert('Bejegyzés törölve.');
     loadEntries();
   } else {
-    alert('Hiba történt a törlés során.');
+    const data = await res.json();
+    alert(data.error || 'Hiba történt a törlés során.');
   }
 }
 
-function editEntry(id, date, hour, education_type, duration, instructor, topic, outline, shift) {
-  document.getElementById('date').value = date;
-  setDropdownValue('hours', hour);
-  setDropdownValue('education_types', education_type);
-  setDropdownValue('durations', duration);
-  setDropdownValue('instructors', instructor);
-  setDropdownValue('topics', topic);
-  setDropdownValue('outlines', outline);
+function editEntry(entry) {
+  document.getElementById('date').value = entry.date;
+  setSelectValue('hours', entry.hour_id);
+  setSelectValue('education_types', entry.education_type_id);
+  setSelectValue('durations', entry.duration_id);
+  setSelectValue('instructors', entry.instructor_id);
+  setSelectValue('topics', entry.topic_id);
+  setSelectValue('outlines', entry.outline_id);
 
-  if (shift) {
-    const shiftSelect = document.getElementById('shift');
-    if (shiftSelect && shiftSelect.style.display !== 'none') {
-      shiftSelect.value = shift;
-    }
+  const shiftSelect = document.getElementById('shift');
+  if (shiftSelect && shiftSelect.style.display !== 'none') {
+    shiftSelect.value = entry.shift || '';
   }
 
-  editingId = id;
-  document.getElementById('response').textContent = '✏️ Szerkesztési mód: módosítasz egy bejegyzést.';
-  document.getElementById('entryForm').classList.add('editing-mode');
-  document.querySelector('#entryForm').scrollIntoView({ behavior: 'smooth' });
+  editingId = entry.id;
+  setMessage('response', 'Szerkesztési mód: módosítasz egy bejegyzést.');
+  entryForm.classList.add('editing-mode');
+  entryForm.scrollIntoView({ behavior: 'smooth' });
   document.getElementById('cancelEdit').style.display = 'inline-block';
 }
 
-function setDropdownValue(selectId, label) {
+function setSelectValue(selectId, value) {
   const select = document.getElementById(selectId);
-  for (const option of select.options) {
-    if (option.textContent === label) {
-      select.value = option.value;
-      break;
-    }
-  }
+  if (select) select.value = String(value);
+}
+
+function resetEntryForm() {
+  entryForm.reset();
+  setTodayDate();
+  editingId = null;
+  entryForm.classList.remove('editing-mode');
+  document.getElementById('cancelEdit').style.display = 'none';
 }
 
 function updateFilterUI() {
@@ -404,43 +469,38 @@ function updateFilterUI() {
 
 function exportToExcel() {
   const type = document.getElementById('filterType') ? document.getElementById('filterType').value : 'month';
-  let url = `${API_URL}/export?type=${type}`;
+  const params = new URLSearchParams({ type, token: getToken() });
 
   if (type === 'month') {
     const month = document.getElementById('monthSelect').value;
     if (!month) return alert('Válassz hónapot!');
-    url += `&month=${month}`;
+    params.set('month', month);
   } else if (type === 'day') {
     const day = document.getElementById('daySelect').value;
     if (!day) return alert('Válassz napot!');
-    url += `&day=${day}`;
+    params.set('day', day);
   } else if (type === 'interval') {
     const start = document.getElementById('startDate').value;
     const end = document.getElementById('endDate').value;
     if (!start || !end) return alert('Válaszd ki a kezdő és végdátumot!');
-    url += `&start=${start}&end=${end}`;
+    params.set('start', start);
+    params.set('end', end);
   }
 
   const filterShiftContainer = document.getElementById('shiftFilterContainer');
   if (filterShiftContainer && filterShiftContainer.style.display !== 'none') {
-    const shift = document.getElementById('filterShift').value;
-    url += `&shift=${shift}`;
+    params.set('shift', document.getElementById('filterShift').value);
   }
 
-  // Attach token
-  url += `&token=${localStorage.getItem('token')}`;
-
-  window.open(url, '_blank');
+  window.open(`${API_URL}/export?${params.toString()}`, '_blank');
 }
-
 
 function setTodayDate() {
   const dateInput = document.getElementById('date');
-  if (dateInput) {
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const dd = String(today.getDate()).padStart(2, '0');
-    dateInput.value = `${yyyy}-${mm}-${dd}`;
-  }
+  if (dateInput) dateInput.value = currentDateString();
 }
+
+window.logout = logout;
+window.updateFilterUI = updateFilterUI;
+window.loadEntries = loadEntries;
+window.exportToExcel = exportToExcel;

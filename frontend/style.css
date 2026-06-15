@@ -180,3 +180,53 @@ input[type="date"] {
 #entryForm.editing-mode input[type="date"] {
   border: 1px solid #ff4444;
 }
+
+.filter-section {
+  margin-bottom: 20px;
+}
+
+.top-actions,
+.entry-actions,
+.list-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.top-actions {
+  margin-bottom: 20px;
+}
+
+.entry-item {
+  border-bottom: 1px solid #1e293b;
+  padding: 12px 0;
+}
+
+.entry-item p {
+  margin: 0 0 6px;
+}
+
+.list-row {
+  justify-content: space-between;
+  border-bottom: 1px solid #1e293b;
+  padding: 8px 0;
+}
+
+.password-modal {
+  border: 2px solid #ef4444;
+  padding: 20px;
+  background-color: rgba(127, 29, 29, 0.35);
+  margin-top: 20px;
+}
+
+.warning-badge {
+  color: #f87171;
+  font-size: 12px;
+}
+
+.warning-button {
+  background-color: darkorange;
+  color: white;
+  border-color: darkorange;
+}

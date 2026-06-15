@@ -1,108 +1,164 @@
 const API_URL = 'http://localhost:3000/api';
 const token = localStorage.getItem('token');
 
-if (!token) {
-    window.location.href = 'login.html';
+function logout() {
+  localStorage.removeItem('token');
+  localStorage.removeItem('role');
+  localStorage.removeItem('shift');
+  window.location.href = 'login.html';
 }
 
-function logout() {
-    localStorage.removeItem('token');
-    window.location.href = 'login.html';
+function decodeToken() {
+  if (!token) return null;
+  try {
+    return JSON.parse(atob(token.split('.')[1]));
+  } catch (err) {
+    return null;
+  }
+}
+
+function requireAdmin() {
+  const decoded = decodeToken();
+  if (!decoded || decoded.role !== 'admin') {
+    alert('Nincs jogosultságod a felhasználó menedzsmenthez.');
+    window.location.href = 'index.html';
+    return false;
+  }
+
+  return true;
+}
+
+function authHeaders(extraHeaders = {}) {
+  return {
+    ...extraHeaders,
+    Authorization: `Bearer ${token}`
+  };
+}
+
+function setManagementMessage(text, color = 'green') {
+  const msg = document.getElementById('managementMessage');
+  msg.textContent = text;
+  msg.style.color = color;
+
+  if (text) {
+    setTimeout(() => {
+      msg.textContent = '';
+    }, 3000);
+  }
 }
 
 async function loadUsers() {
-    const res = await fetch(`${API_URL}/admin/users`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-    });
+  const res = await fetch(`${API_URL}/admin/users`, {
+    headers: authHeaders()
+  });
 
-    if (!res.ok) {
-        document.getElementById('managementMessage').textContent = 'Hiba a felhasználók betöltésekor. Lehet, hogy nem vagy admin!';
-        document.getElementById('managementMessage').style.color = 'red';
-        return;
-    }
+  if (!res.ok) {
+    setManagementMessage('Hiba a felhasználók betöltésekor. Lehet, hogy nem vagy admin.', 'red');
+    return;
+  }
 
-    const users = await res.json();
-    const tbody = document.querySelector('#usersTable tbody');
-    tbody.innerHTML = '';
+  const users = await res.json();
+  const tbody = document.querySelector('#usersTable tbody');
+  tbody.innerHTML = '';
 
-    users.forEach(user => {
-        const tr = document.createElement('tr');
-
-        tr.innerHTML = `
-            <td>${user.id}</td>
-            <td>${user.username} 
-                ${user.must_change_password ? '<span style="color:red;font-size:12px;">(Jelszócsere szükséges)</span>' : ''}
-            </td>
-            <td>
-                <select id="shift-${user.id}">
-                    <option value="" disabled>Válassz</option>
-                    <option value="1" ${user.shift === '1' ? 'selected' : ''}>1. Műszak</option>
-                    <option value="2" ${user.shift === '2' ? 'selected' : ''}>2. Műszak</option>
-                    <option value="3" ${user.shift === '3' ? 'selected' : ''}>3. Műszak</option>
-                    <option value="4" ${user.shift === '4' ? 'selected' : ''}>4. Műszak</option>
-                    <option value="5" ${user.shift === '5' ? 'selected' : ''}>5. Műszak</option>
-                </select>
-                <button onclick="updateShift(${user.id})">Mentés</button>
-            </td>
-            <td>
-                <button onclick="resetPassword(${user.id}, '${user.username}')" style="background-color: darkorange; color: white;">Jelszó Reset (asd123)</button>
-            </td>
-        `;
-        tbody.appendChild(tr);
-    });
+  users.forEach(user => {
+    tbody.appendChild(renderUserRow(user));
+  });
 }
 
-async function updateShift(userId) {
-    const shiftSelect = document.getElementById(`shift-${userId}`);
-    const shift = shiftSelect.value;
+function renderUserRow(user) {
+  const tr = document.createElement('tr');
 
-    const res = await fetch(`${API_URL}/admin/users/${userId}/shift`, {
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ shift })
-    });
+  const idCell = document.createElement('td');
+  idCell.textContent = user.id;
 
-    const data = await res.json();
-    const msg = document.getElementById('managementMessage');
+  const nameCell = document.createElement('td');
+  nameCell.textContent = user.username;
+  if (user.must_change_password) {
+    const badge = document.createElement('span');
+    badge.className = 'warning-badge';
+    badge.textContent = 'Jelszócsere szükséges';
+    nameCell.appendChild(document.createTextNode(' '));
+    nameCell.appendChild(badge);
+  }
 
-    if (res.ok) {
-        msg.textContent = 'Műszak sikeresen frissítve!';
-        msg.style.color = 'green';
-    } else {
-        msg.textContent = data.error || 'Hiba történt.';
-        msg.style.color = 'red';
-    }
+  const shiftCell = document.createElement('td');
+  const shiftSelect = createShiftSelect(user);
+  const saveButton = document.createElement('button');
+  saveButton.type = 'button';
+  saveButton.textContent = 'Mentés';
+  saveButton.addEventListener('click', () => updateShift(user.id, shiftSelect.value));
+  shiftCell.appendChild(shiftSelect);
+  shiftCell.appendChild(saveButton);
 
-    setTimeout(() => msg.textContent = '', 3000);
+  const actionsCell = document.createElement('td');
+  const resetButton = document.createElement('button');
+  resetButton.type = 'button';
+  resetButton.className = 'warning-button';
+  resetButton.textContent = 'Jelszó reset';
+  resetButton.addEventListener('click', () => resetPassword(user.id, user.username));
+  actionsCell.appendChild(resetButton);
+
+  tr.appendChild(idCell);
+  tr.appendChild(nameCell);
+  tr.appendChild(shiftCell);
+  tr.appendChild(actionsCell);
+
+  return tr;
+}
+
+function createShiftSelect(user) {
+  const select = document.createElement('select');
+  select.id = `shift-${user.id}`;
+
+  ['', '1', '2', '3', '4', '5'].forEach(value => {
+    const option = document.createElement('option');
+    option.value = value;
+    option.disabled = value === '';
+    option.textContent = value ? `${value}. műszak` : 'Válassz';
+    option.selected = user.shift === value;
+    select.appendChild(option);
+  });
+
+  return select;
+}
+
+async function updateShift(userId, shift) {
+  const res = await fetch(`${API_URL}/admin/users/${userId}/shift`, {
+    method: 'PUT',
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ shift })
+  });
+
+  const data = await res.json();
+  if (res.ok) {
+    setManagementMessage('Műszak sikeresen frissítve!');
+  } else {
+    setManagementMessage(data.error || 'Hiba történt.', 'red');
+  }
 }
 
 async function resetPassword(userId, username) {
-    if (!confirm(`Biztosan resetelni akarod ${username} jelszavát az "asd123" értékre?`)) {
-        return;
-    }
+  if (!confirm(`Biztosan resetelni akarod ${username} jelszavát?`)) {
+    return;
+  }
 
-    const res = await fetch(`${API_URL}/admin/users/${userId}/reset-password`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
-    });
+  const res = await fetch(`${API_URL}/admin/users/${userId}/reset-password`, {
+    method: 'POST',
+    headers: authHeaders()
+  });
 
-    const data = await res.json();
-    const msg = document.getElementById('managementMessage');
-
-    if (res.ok) {
-        msg.textContent = `Jelszó sikeresen resetelve ${username} számára.`;
-        msg.style.color = 'green';
-        loadUsers(); // Refresh to show the (Jelszócsere szükséges) badge
-    } else {
-        msg.textContent = data.error || 'Hiba történt.';
-        msg.style.color = 'red';
-    }
-
-    setTimeout(() => msg.textContent = '', 3000);
+  const data = await res.json();
+  if (res.ok) {
+    setManagementMessage(`Jelszó sikeresen resetelve ${username} számára.`);
+    loadUsers();
+  } else {
+    setManagementMessage(data.error || 'Hiba történt.', 'red');
+  }
 }
 
-// Initial load
-document.addEventListener('DOMContentLoaded', loadUsers);
+if (requireAdmin()) {
+  document.addEventListener('DOMContentLoaded', loadUsers);
+}
+
+window.logout = logout;

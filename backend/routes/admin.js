@@ -1,202 +1,167 @@
 const express = require('express');
+const bcrypt = require('bcryptjs');
 const router = express.Router();
 const db = require('../models/db');
 const auth = require('../middleware/auth');
 const adminOnly = require('../middleware/admin');
 
-// ✅ POST /admin/instructors – új oktató felvétele
-router.post('/instructors', auth, adminOnly, (req, res) => {
-  const { name } = req.body;
-  if (!name || name.trim() === '') {
-    return res.status(400).json({ error: 'A név megadása kötelező.' });
-  }
+const SHIFT_VALUES = new Set(['1', '2', '3', '4', '5']);
+const DEFAULT_RESET_PASSWORD = process.env.DEFAULT_RESET_PASSWORD || 'asd123';
 
-  const trimmedName = name.trim();
+const LIST_RESOURCES = {
+  instructors: { table: 'instructors', field: 'name', label: 'Oktató' },
+  topics: { table: 'topics', field: 'name', label: 'Téma' },
+  outlines: { table: 'outlines', field: 'content', label: 'Vázlat' },
+  durations: { table: 'durations', field: 'value', label: 'Időtartam' },
+  education_types: { table: 'education_types', field: 'name', label: 'Oktatási típus' }
+};
 
-  // Először ellenőrizzük, hogy létezik-e már
-  db.get('SELECT id FROM instructors WHERE name = ?', [trimmedName], (err, row) => {
-    if (err) {
-      return res.status(500).json({ error: 'Hiba az adatbázis lekérdezés során.', details: err.message });
-    }
-
-    if (row) {
-      return res.status(409).json({ error: 'Már létezik ilyen nevű oktató.' });
-    }
-
-    // Ha nincs duplikáció, mentjük az új oktatót
-    db.run('INSERT INTO instructors (name) VALUES (?)', [trimmedName], function (err) {
-      if (err) {
-        return res.status(500).json({ error: 'Hiba az oktató mentésekor.', details: err.message });
-      }
-      res.status(201).json({ message: 'Oktató sikeresen hozzáadva.', id: this.lastID });
+function run(sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.run(sql, params, function onRun(err) {
+      if (err) reject(err);
+      else resolve(this);
     });
   });
-});
+}
 
-// ✅ POST /admin/topics – új téma felvétele
-router.post('/topics', auth, adminOnly, (req, res) => {
-  const { name } = req.body;
-  if (!name || name.trim() === '') {
-    return res.status(400).json({ error: 'A téma megadása kötelező.' });
-  }
-
-  db.run('INSERT INTO topics (name) VALUES (?)', [name.trim()], function (err) {
-    if (err) {
-      return res.status(500).json({ error: 'Hiba a téma mentésekor.', details: err.message });
-    }
-    res.status(201).json({ message: 'Téma sikeresen hozzáadva.', id: this.lastID });
+function all(sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.all(sql, params, (err, rows) => {
+      if (err) reject(err);
+      else resolve(rows);
+    });
   });
-});
+}
 
-// ✅ POST /admin/outlines – új vázlat felvétele
-router.post('/outlines', auth, adminOnly, (req, res) => {
-  const { content } = req.body;
-  if (!content || content.trim() === '') {
-    return res.status(400).json({ error: 'A vázlat szöveg megadása kötelező.' });
-  }
-
-  db.run('INSERT INTO outlines (content) VALUES (?)', [content.trim()], function (err) {
-    if (err) {
-      return res.status(500).json({ error: 'Hiba a vázlat mentésekor.', details: err.message });
-    }
-    res.status(201).json({ message: 'Vázlat sikeresen hozzáadva.', id: this.lastID });
+function get(sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.get(sql, params, (err, row) => {
+      if (err) reject(err);
+      else resolve(row);
+    });
   });
+}
+
+function createListItem(resourceKey) {
+  return async (req, res) => {
+    const resource = LIST_RESOURCES[resourceKey];
+    const value = typeof req.body[resource.field] === 'string' ? req.body[resource.field].trim() : '';
+
+    if (!value) {
+      return res.status(400).json({ error: `${resource.label} megadása kötelező.` });
+    }
+
+    try {
+      const existing = await get(
+        `SELECT id FROM ${resource.table} WHERE ${resource.field} = ? COLLATE NOCASE`,
+        [value]
+      );
+      if (existing) {
+        return res.status(409).json({ error: `${resource.label} már létezik.` });
+      }
+
+      const result = await run(
+        `INSERT INTO ${resource.table} (${resource.field}) VALUES (?)`,
+        [value]
+      );
+      res.status(201).json({ message: `${resource.label} sikeresen hozzáadva.`, id: result.lastID });
+    } catch (err) {
+      res.status(500).json({ error: `${resource.label} mentése sikertelen.`, details: err.message });
+    }
+  };
+}
+
+function deleteListItem(resourceKey) {
+  return async (req, res) => {
+    const resource = LIST_RESOURCES[resourceKey];
+    const id = Number(req.params.id);
+
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ error: 'Érvénytelen azonosító.' });
+    }
+
+    try {
+      const result = await run(`DELETE FROM ${resource.table} WHERE id = ?`, [id]);
+      if (result.changes === 0) {
+        return res.status(404).json({ error: `${resource.label} nem található.` });
+      }
+
+      res.json({ message: `${resource.label} sikeresen törölve.` });
+    } catch (err) {
+      res.status(500).json({ error: `${resource.label} törlése sikertelen.`, details: err.message });
+    }
+  };
+}
+
+Object.keys(LIST_RESOURCES).forEach(resourceKey => {
+  router.post(`/${resourceKey}`, auth, adminOnly, createListItem(resourceKey));
+  router.delete(`/${resourceKey}/:id`, auth, adminOnly, deleteListItem(resourceKey));
 });
 
-// ✅ POST /admin/durations – új időtartam felvétele
-router.post('/durations', auth, adminOnly, (req, res) => {
-  const { value } = req.body;
-  if (!value || value.trim() === '') {
-    return res.status(400).json({ error: 'Az időtartam megadása kötelező.' });
-  }
-
-  db.run('INSERT INTO durations (value) VALUES (?)', [value.trim()], function (err) {
-    if (err) {
-      return res.status(500).json({ error: 'Hiba az időtartam mentésekor.', details: err.message });
-    }
-    res.status(201).json({ message: 'Időtartam sikeresen hozzáadva.', id: this.lastID });
-  });
-});
-
-// ✅ POST /admin/education_types – új oktatási típus felvétele
-router.post('/education_types', auth, adminOnly, (req, res) => {
-  const { name } = req.body;
-  if (!name || name.trim() === '') {
-    return res.status(400).json({ error: 'A név megadása kötelező.' });
-  }
-
-  db.run('INSERT INTO education_types (name) VALUES (?)', [name.trim()], function (err) {
-    if (err) {
-      return res.status(500).json({ error: 'Hiba az oktatási típus mentésekor.', details: err.message });
-    }
-    res.status(201).json({ message: 'Oktatási típus sikeresen hozzáadva.', id: this.lastID });
-  });
-});
-
-// 🗑️ Oktató törlése
-router.delete('/instructors/:id', auth, adminOnly, (req, res) => {
-  const id = req.params.id;
-  db.run('DELETE FROM instructors WHERE id = ?', [id], function (err) {
-    if (err) {
-      return res.status(500).json({ error: 'Hiba az oktató törlésekor.', details: err.message });
-    }
-    if (this.changes === 0) {
-      return res.status(404).json({ error: 'Nem található ilyen oktató.' });
-    }
-    res.json({ message: 'Oktató sikeresen törölve.' });
-  });
-});
-
-// 🗑️ Téma törlése
-router.delete('/topics/:id', auth, adminOnly, (req, res) => {
-  const id = req.params.id;
-  db.run('DELETE FROM topics WHERE id = ?', [id], function (err) {
-    if (err) {
-      return res.status(500).json({ error: 'Hiba a téma törlésekor.', details: err.message });
-    }
-    if (this.changes === 0) {
-      return res.status(404).json({ error: 'Nem található ilyen téma.' });
-    }
-    res.json({ message: 'Téma sikeresen törölve.' });
-  });
-});
-
-// 🗑️ Vázlat törlése
-router.delete('/outlines/:id', auth, adminOnly, (req, res) => {
-  const id = req.params.id;
-  db.run('DELETE FROM outlines WHERE id = ?', [id], function (err) {
-    if (err) {
-      return res.status(500).json({ error: 'Hiba a vázlat törlésekor.', details: err.message });
-    }
-    if (this.changes === 0) {
-      return res.status(404).json({ error: 'Nem található ilyen vázlat.' });
-    }
-    res.json({ message: 'Vázlat sikeresen törölve.' });
-  });
-});
-
-// 🗑️ Időtartam törlése
-router.delete('/durations/:id', auth, adminOnly, (req, res) => {
-  const id = req.params.id;
-  db.run('DELETE FROM durations WHERE id = ?', [id], function (err) {
-    if (err) {
-      return res.status(500).json({ error: 'Hiba az időtartam törlésekor.', details: err.message });
-    }
-    if (this.changes === 0) {
-      return res.status(404).json({ error: 'Nem található ilyen időtartam.' });
-    }
-    res.json({ message: 'Időtartam sikeresen törölve.' });
-  });
-});
-
-// 🗑️ Oktatási típus törlése
-router.delete('/education_types/:id', auth, adminOnly, (req, res) => {
-  const id = req.params.id;
-  db.run('DELETE FROM education_types WHERE id = ?', [id], function (err) {
-    if (err) {
-      return res.status(500).json({ error: 'Hiba az oktatási típus törlésekor.', details: err.message });
-    }
-    if (this.changes === 0) {
-      return res.status(404).json({ error: 'Nem található ilyen oktatási típus.' });
-    }
-    res.json({ message: 'Oktatási típus sikeresen törölve.' });
-  });
-});
-
-// --- USER MANAGEMENT ---
-
-// Felhasználók listázása (csak a normál userek)
-router.get('/users', auth, adminOnly, (req, res) => {
-  db.all('SELECT id, username, role, shift, must_change_password FROM users WHERE role = "user"', (err, rows) => {
-    if (err) return res.status(500).json({ error: 'Hiba a felhasználók betöltésekor' });
+router.get('/users', auth, adminOnly, async (req, res) => {
+  try {
+    const rows = await all(`
+      SELECT id, username, role, shift, must_change_password
+      FROM users
+      WHERE role = 'user'
+      ORDER BY username COLLATE NOCASE ASC
+    `);
     res.json(rows);
-  });
+  } catch (err) {
+    res.status(500).json({ error: 'Hiba a felhasználók betöltésekor.', details: err.message });
+  }
 });
 
-// Felhasználó jelszavának resetelése
 router.post('/users/:id/reset-password', auth, adminOnly, async (req, res) => {
-  const userId = req.params.id;
-  const defaultPassword = await require('bcryptjs').hash('asd123', 10);
+  const userId = Number(req.params.id);
+  if (!Number.isInteger(userId) || userId <= 0) {
+    return res.status(400).json({ error: 'Érvénytelen felhasználóazonosító.' });
+  }
 
-  db.run('UPDATE users SET password_hash = ?, must_change_password = 1 WHERE id = ?', [defaultPassword, userId], function (err) {
-    if (err) return res.status(500).json({ error: 'Hiba a jelszó reset során.' });
-    if (this.changes === 0) return res.status(404).json({ error: 'Felhasználó nem található.' });
-    res.json({ message: 'Jelszó sikeresen visszaállítva az "asd123" értékre.' });
-  });
+  try {
+    const defaultPassword = await bcrypt.hash(DEFAULT_RESET_PASSWORD, 10);
+    const result = await run(
+      "UPDATE users SET password_hash = ?, must_change_password = 1 WHERE id = ? AND role = 'user'",
+      [defaultPassword, userId]
+    );
+
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'Felhasználó nem található.' });
+    }
+
+    res.json({ message: `Jelszó sikeresen visszaállítva az "${DEFAULT_RESET_PASSWORD}" értékre.` });
+  } catch (err) {
+    res.status(500).json({ error: 'Hiba a jelszó reset során.', details: err.message });
+  }
 });
 
-// Felhasználó műszakjának frissítése
-router.put('/users/:id/shift', auth, adminOnly, (req, res) => {
-  const userId = req.params.id;
-  const { shift } = req.body;
+router.put('/users/:id/shift', auth, adminOnly, async (req, res) => {
+  const userId = Number(req.params.id);
+  const shift = req.body.shift ? String(req.body.shift).trim() : '';
 
-  if (!shift) return res.status(400).json({ error: 'A műszak megadása kötelező.' });
+  if (!Number.isInteger(userId) || userId <= 0) {
+    return res.status(400).json({ error: 'Érvénytelen felhasználóazonosító.' });
+  }
 
-  db.run('UPDATE users SET shift = ? WHERE id = ?', [shift, userId], function (err) {
-    if (err) return res.status(500).json({ error: 'Hiba a műszak frissítésekor.' });
-    if (this.changes === 0) return res.status(404).json({ error: 'Felhasználó nem található.' });
+  if (!SHIFT_VALUES.has(shift)) {
+    return res.status(400).json({ error: 'Érvényes műszak megadása kötelező.' });
+  }
+
+  try {
+    const result = await run(
+      "UPDATE users SET shift = ? WHERE id = ? AND role = 'user'",
+      [shift, userId]
+    );
+
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'Felhasználó nem található.' });
+    }
+
     res.json({ message: 'Műszak sikeresen frissítve.' });
-  });
+  } catch (err) {
+    res.status(500).json({ error: 'Hiba a műszak frissítésekor.', details: err.message });
+  }
 });
 
 module.exports = router;

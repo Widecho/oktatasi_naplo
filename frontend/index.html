@@ -8,7 +8,6 @@
 </head>
 
 <body>
-
   <h1>Új naplóbejegyzés</h1>
 
   <form id="entryForm">
@@ -18,11 +17,11 @@
     <select id="education_types" required></select>
     <select id="shift" style="display:none;">
       <option value="" disabled selected>Válassz műszakot!</option>
-      <option value="1">1. Műszak</option>
-      <option value="2">2. Műszak</option>
-      <option value="3">3. Műszak</option>
-      <option value="4">4. Műszak</option>
-      <option value="5">5. Műszak</option>
+      <option value="1">1. műszak</option>
+      <option value="2">2. műszak</option>
+      <option value="3">3. műszak</option>
+      <option value="4">4. műszak</option>
+      <option value="5">5. műszak</option>
       <option value="kombinált">Kombinált (mindenkire vonatkozik)</option>
     </select>
     <select id="durations" required></select>
@@ -31,15 +30,15 @@
     <select id="outlines" required></select>
 
     <button type="submit">Mentés</button>
-    <button type="button" id="cancelEdit" style="display: none;">❌ Mégse szerkesztés</button>
+    <button type="button" id="cancelEdit" style="display: none;">Mégse szerkesztés</button>
   </form>
 
   <hr>
-  <button onclick="logout()" style="float: right;">🚪 Kijelentkezés</button>
+  <button onclick="logout()" style="float: right;">Kijelentkezés</button>
 
-  <h2>Szűrés és Exportálás</h2>
+  <h2>Szűrés és exportálás</h2>
 
-  <div class="filter-section" style="margin-bottom: 20px;">
+  <div class="filter-section">
     <label for="filterType"><strong>Szűrés típusa:</strong></label>
     <select id="filterType" onchange="updateFilterUI()">
       <option value="month">Havi bontás</option>
@@ -68,17 +67,17 @@
       <label for="filterShift"><strong>Műszak szűrés:</strong></label>
       <select id="filterShift">
         <option value="Összes">Összes</option>
-        <option value="1">1. Műszak</option>
-        <option value="2">2. Műszak</option>
-        <option value="3">3. Műszak</option>
-        <option value="4">4. Műszak</option>
-        <option value="5">5. Műszak</option>
+        <option value="1">1. műszak</option>
+        <option value="2">2. műszak</option>
+        <option value="3">3. műszak</option>
+        <option value="4">4. műszak</option>
+        <option value="5">5. műszak</option>
         <option value="kombinált">Kombinált</option>
       </select>
     </span>
 
-    <button onclick="loadEntries()">📅 Megjelenítés</button>
-    <button onclick="exportToExcel()">📥 XLS export</button>
+    <button onclick="loadEntries()">Megjelenítés</button>
+    <button onclick="exportToExcel()">XLS export</button>
   </div>
 
   <h2>Naplóbejegyzések</h2>

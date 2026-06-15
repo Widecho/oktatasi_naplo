@@ -2,33 +2,33 @@
 <html lang="hu">
 
 <head>
-    <meta charset="UTF-8">
-    <title>Regisztráció</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <title>Regisztráció</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
-    <h1>Regisztráció</h1>
-    <form id="registerForm">
-        <input type="text" id="regUsername" placeholder="Felhasználónév" required>
-        <input type="password" id="regPassword" placeholder="Jelszó (min. 1 szám)" required>
+  <h1>Regisztráció</h1>
+  <form id="registerForm">
+    <input type="text" id="regUsername" placeholder="Felhasználónév" required>
+    <input type="password" id="regPassword" placeholder="Jelszó (min. 6 karakter, benne szám)" required>
 
-        <select id="regShift" required>
-            <option value="" disabled selected>Válassz műszakot!</option>
-            <option value="1">1. Műszak</option>
-            <option value="2">2. Műszak</option>
-            <option value="3">3. Műszak</option>
-            <option value="4">4. Műszak</option>
-            <option value="5">5. Műszak</option>
-        </select>
-        <input type="text" id="secretCode"
-            placeholder="Titkos kód (admin felhasználó létrehozásához add meg a szupertitkos kódot) )">
-        <button type="submit">Regisztráció</button>
-    </form>
-    <p id="regMessage"></p>
-    <p>Már van fiókod? <a href="login.html">Jelentkezz be!</a></p>
+    <select id="regShift" required>
+      <option value="" disabled selected>Válassz műszakot!</option>
+      <option value="1">1. műszak</option>
+      <option value="2">2. műszak</option>
+      <option value="3">3. műszak</option>
+      <option value="4">4. műszak</option>
+      <option value="5">5. műszak</option>
+    </select>
 
-    <script src="script.js"></script>
+    <input type="text" id="secretCode" placeholder="Titkos kód admin felhasználó létrehozásához">
+    <button type="submit">Regisztráció</button>
+  </form>
+  <p id="regMessage"></p>
+  <p>Már van fiókod? <a href="login.html">Jelentkezz be!</a></p>
+
+  <script src="script.js"></script>
 </body>
 
 </html>

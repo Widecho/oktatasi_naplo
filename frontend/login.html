@@ -16,10 +16,9 @@
   </form>
   <p id="error" style="color:red;"></p>
 
-  <div id="changePasswordModal"
-    style="display:none; border:2px solid red; padding: 20px; background-color: #ffe6e6; margin-top:20px;">
+  <div id="changePasswordModal" class="password-modal" style="display:none;">
     <h2>Kötelező jelszóváltoztatás</h2>
-    <p>Az adminisztrátor visszaállította a jelszavadat. Kérjük, adj meg egy új jelszót (min. 1 szám)!</p>
+    <p>Az adminisztrátor visszaállította a jelszavadat. Kérjük, adj meg egy új jelszót, amely legalább 6 karakterből áll és tartalmaz számot.</p>
     <form id="changePasswordForm">
       <input type="password" id="newPassword" placeholder="Új jelszó" required>
       <button type="submit">Jelszó frissítése és továbblépés</button>

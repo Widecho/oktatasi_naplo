@@ -4,173 +4,251 @@ const db = require('../models/db');
 const auth = require('../middleware/auth');
 const adminOnly = require('../middleware/admin');
 
-router.get('/dropdowns', (req, res) => {
-  const queries = {
-    hours: 'SELECT * FROM hours',
-    durations: 'SELECT * FROM durations',
-    instructors: 'SELECT * FROM instructors',
-    topics: 'SELECT * FROM topics',
-    outlines: 'SELECT * FROM outlines',
-    education_types: 'SELECT * FROM education_types'
+const SHIFT_VALUES = new Set(['1', '2', '3', '4', '5', 'kombinált']);
+const DROPDOWN_QUERIES = {
+  hours: 'SELECT * FROM hours ORDER BY id ASC',
+  durations: 'SELECT * FROM durations ORDER BY id ASC',
+  instructors: 'SELECT * FROM instructors ORDER BY name COLLATE NOCASE ASC',
+  topics: 'SELECT * FROM topics ORDER BY name COLLATE NOCASE ASC',
+  outlines: 'SELECT * FROM outlines ORDER BY content COLLATE NOCASE ASC',
+  education_types: 'SELECT * FROM education_types ORDER BY name COLLATE NOCASE ASC'
+};
+
+function all(sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.all(sql, params, (err, rows) => {
+      if (err) reject(err);
+      else resolve(rows);
+    });
+  });
+}
+
+function run(sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.run(sql, params, function onRun(err) {
+      if (err) reject(err);
+      else resolve(this);
+    });
+  });
+}
+
+function normalizeShift(value) {
+  if (value === undefined || value === null) return '';
+  return String(value).trim();
+}
+
+function parseEntryPayload(body, user) {
+  const fields = {
+    date: body.date,
+    hour_id: Number(body.hour_id),
+    duration_id: Number(body.duration_id),
+    topic_id: Number(body.topic_id),
+    outline_id: Number(body.outline_id),
+    instructor_id: Number(body.instructor_id),
+    education_type_id: Number(body.education_type_id)
   };
 
-  const results = {};
-  let completed = 0;
-  const total = Object.keys(queries).length;
+  const missingField = Object.entries(fields).some(([, value]) => {
+    if (typeof value === 'number') return !Number.isInteger(value) || value <= 0;
+    return !value;
+  });
 
-  for (const [key, sql] of Object.entries(queries)) {
-    db.all(sql, [], (err, rows) => {
-      if (err) {
-        return res.status(500).json({ error: `Hiba a(z) ${key} lekérdezése közben`, details: err.message });
-      }
-      results[key] = rows;
-      completed++;
-      if (completed === total) {
-        res.json(results);
-      }
-    });
+  let shift = user.role === 'admin' ? normalizeShift(body.shift) : normalizeShift(user.shift);
+  if (missingField || !shift) {
+    return { error: 'Hiányzó vagy érvénytelen mezők a kérésben.' };
+  }
+
+  if (!SHIFT_VALUES.has(shift)) {
+    return { error: 'Érvénytelen műszak.' };
+  }
+
+  return { values: { ...fields, shift } };
+}
+
+function userCanAccessAll(user) {
+  return user.role === 'admin';
+}
+
+function restrictedEntryWhere(user, alias = 'naplo_entries') {
+  if (userCanAccessAll(user)) {
+    return { clause: '', params: [] };
+  }
+
+  return {
+    clause: ` AND ${alias}.shift = ?`,
+    params: [user.shift]
+  };
+}
+
+router.get('/dropdowns', async (req, res) => {
+  try {
+    const results = {};
+    await Promise.all(Object.entries(DROPDOWN_QUERIES).map(async ([key, sql]) => {
+      results[key] = await all(sql);
+    }));
+    res.json(results);
+  } catch (err) {
+    res.status(500).json({ error: 'Hiba a legördülő adatok lekérdezése közben.', details: err.message });
   }
 });
 
-// GET /naplo/honap/:ev/:honap paraméterezéssel szintén le kellene kezelni a műszakot, de főleg a general /naplo lesz a mérvadó a frontend filterezésnél. Ezt is patcheljük.
 router.get('/naplo/honap/:ev/:honap', auth, (req, res) => {
-  res.status(400).json({ error: 'Elavult végpont. A /naplo -t használd frontend szűréssel.' });
+  res.status(400).json({ error: 'Elavult végpont. Használd a /naplo végpontot szűréssel.' });
 });
 
-// POST /naplo – új bejegyzés mentése
-router.post('/naplo', auth, (req, res) => {
-  const { date, hour_id, duration_id, topic_id, outline_id, instructor_id, education_type_id } = req.body;
-  const user_id = req.user.id;
-  const role = req.user.role;
-  let shift = req.user.shift; // By default, use the user's token shift
-
-  // Ha admin, akkor a frontendről jön a kiválasztott shift
-  if (role === 'admin') {
-    shift = req.body.shift;
-    if (!shift) return res.status(400).json({ error: 'Műszak megadása kötelező az adminnak is.' });
+router.post('/naplo', auth, async (req, res) => {
+  const parsed = parseEntryPayload(req.body, req.user);
+  if (parsed.error) {
+    return res.status(400).json({ error: parsed.error });
   }
 
-  if (!date || !hour_id || !duration_id || !topic_id || !outline_id || !instructor_id || !education_type_id || !shift) {
-    return res.status(400).json({ error: 'Hiányzó mezők a kérésben.' });
+  const {
+    date,
+    hour_id,
+    duration_id,
+    topic_id,
+    outline_id,
+    instructor_id,
+    education_type_id,
+    shift
+  } = parsed.values;
+
+  try {
+    const result = await run(`
+      INSERT INTO naplo_entries
+        (date, hour_id, duration_id, topic_id, outline_id, instructor_id, education_type_id, user_id, shift)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [date, hour_id, duration_id, topic_id, outline_id, instructor_id, education_type_id, req.user.id, shift]);
+
+    res.status(201).json({ message: 'Bejegyzés sikeresen létrehozva.', entryId: result.lastID });
+  } catch (err) {
+    res.status(500).json({ error: 'Hiba a bejegyzés mentésekor.', details: err.message });
   }
-
-  const sql = `
-    INSERT INTO naplo_entries 
-    (date, hour_id, duration_id, topic_id, outline_id, instructor_id, education_type_id, user_id, shift)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `;
-
-  const params = [date, hour_id, duration_id, topic_id, outline_id, instructor_id, education_type_id, user_id, shift];
-
-  db.run(sql, params, function (err) {
-    if (err) {
-      return res.status(500).json({ error: 'Hiba a bejegyzés mentésekor.', details: err.message });
-    }
-    res.status(201).json({ message: 'Bejegyzés sikeresen létrehozva.', entryId: this.lastID });
-  });
 });
 
-// PUT /naplo/:id – meglévő bejegyzés szerkesztése
-router.put('/naplo/:id', auth, (req, res) => {
-  const entryId = req.params.id;
-  const { date, hour_id, duration_id, topic_id, outline_id, instructor_id, education_type_id } = req.body;
-  const user_id = req.user.id;
-  const role = req.user.role;
-  let shift = req.user.shift;
-
-  if (role === 'admin') {
-    shift = req.body.shift;
-    if (!shift) return res.status(400).json({ error: 'Műszak megadása kötelező az adminnak is.' });
+router.put('/naplo/:id', auth, async (req, res) => {
+  const entryId = Number(req.params.id);
+  if (!Number.isInteger(entryId) || entryId <= 0) {
+    return res.status(400).json({ error: 'Érvénytelen bejegyzésazonosító.' });
   }
 
-  if (!date || !hour_id || !duration_id || !topic_id || !outline_id || !instructor_id || !education_type_id || !shift) {
-    return res.status(400).json({ error: 'Hiányzó mezők a kérésben.' });
+  const parsed = parseEntryPayload(req.body, req.user);
+  if (parsed.error) {
+    return res.status(400).json({ error: parsed.error });
   }
 
-  const sql = `
-    UPDATE naplo_entries
-    SET date = ?, hour_id = ?, duration_id = ?, topic_id = ?, outline_id = ?, instructor_id = ?, education_type_id = ?, user_id = ?, shift = ?
-    WHERE id = ?
-  `;
+  const {
+    date,
+    hour_id,
+    duration_id,
+    topic_id,
+    outline_id,
+    instructor_id,
+    education_type_id,
+    shift
+  } = parsed.values;
 
-  const params = [date, hour_id, duration_id, topic_id, outline_id, instructor_id, education_type_id, user_id, shift, entryId];
+  const access = restrictedEntryWhere(req.user);
 
-  db.run(sql, params, function (err) {
-    if (err) {
-      return res.status(500).json({ error: 'Hiba a bejegyzés frissítésekor.', details: err.message });
+  try {
+    const result = await run(`
+      UPDATE naplo_entries
+      SET date = ?,
+          hour_id = ?,
+          duration_id = ?,
+          topic_id = ?,
+          outline_id = ?,
+          instructor_id = ?,
+          education_type_id = ?,
+          user_id = ?,
+          shift = ?
+      WHERE id = ?${access.clause}
+    `, [
+      date,
+      hour_id,
+      duration_id,
+      topic_id,
+      outline_id,
+      instructor_id,
+      education_type_id,
+      req.user.id,
+      shift,
+      entryId,
+      ...access.params
+    ]);
+
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'Nem található ilyen bejegyzés, vagy nincs hozzá jogosultság.' });
     }
-    if (this.changes === 0) {
-      return res.status(404).json({ error: 'Nem található ilyen ID-jű bejegyzés.' });
-    }
+
     res.json({ message: 'Bejegyzés sikeresen frissítve.' });
-  });
+  } catch (err) {
+    res.status(500).json({ error: 'Hiba a bejegyzés frissítésekor.', details: err.message });
+  }
+});
+
+router.delete('/naplo/:id', auth, async (req, res) => {
+  const entryId = Number(req.params.id);
+  if (!Number.isInteger(entryId) || entryId <= 0) {
+    return res.status(400).json({ error: 'Érvénytelen bejegyzésazonosító.' });
+  }
+
+  const access = restrictedEntryWhere(req.user);
+
+  try {
+    const result = await run(`DELETE FROM naplo_entries WHERE id = ?${access.clause}`, [entryId, ...access.params]);
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'Nem található ilyen bejegyzés, vagy nincs hozzá jogosultság.' });
+    }
+
+    res.json({ message: 'Bejegyzés sikeresen törölve.' });
+  } catch (err) {
+    res.status(500).json({ error: 'Hiba a törlés során.', details: err.message });
+  }
+});
+
+router.get('/naplo', auth, async (req, res) => {
+  const shiftCondition = userCanAccessAll(req.user) ? '' : 'WHERE n.shift = ?';
+  const params = userCanAccessAll(req.user) ? [] : [req.user.shift];
+
+  try {
+    const rows = await all(`
+      SELECT n.id,
+             n.date,
+             n.shift,
+             n.hour_id,
+             n.duration_id,
+             n.topic_id,
+             n.outline_id,
+             n.instructor_id,
+             n.education_type_id,
+             h.name AS hour,
+             d.value AS duration,
+             t.name AS topic,
+             o.content AS outline,
+             i.name AS instructor,
+             u.username AS user,
+             et.name AS education_type
+      FROM naplo_entries n
+      JOIN hours h ON n.hour_id = h.id
+      JOIN durations d ON n.duration_id = d.id
+      JOIN topics t ON n.topic_id = t.id
+      JOIN outlines o ON n.outline_id = o.id
+      JOIN instructors i ON n.instructor_id = i.id
+      JOIN users u ON n.user_id = u.id
+      JOIN education_types et ON et.id = n.education_type_id
+      ${shiftCondition}
+      ORDER BY n.date ASC, n.id ASC
+    `, params);
+
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: 'Hiba a naplóbejegyzések lekérdezésekor.', details: err.message });
+  }
 });
 
 router.get('/admin-only', auth, adminOnly, (req, res) => {
   res.json({ message: 'Üdvözlünk, admin!' });
-});
-
-
-
-// DELETE /naplo/:id – bejegyzés törlése
-router.delete('/naplo/:id', auth, (req, res) => {
-  const entryId = req.params.id;
-
-  const sql = 'DELETE FROM naplo_entries WHERE id = ?';
-  db.run(sql, [entryId], function (err) {
-    if (err) {
-      return res.status(500).json({ error: 'Hiba a törlés során.', details: err.message });
-    }
-
-    if (this.changes === 0) {
-      return res.status(404).json({ error: 'Nincs ilyen ID-jű bejegyzés.' });
-    }
-
-    res.json({ message: 'Bejegyzés sikeresen törölve.' });
-  });
-});
-
-router.get('/naplo', auth, (req, res) => {
-  const role = req.user.role;
-  const shift = req.user.shift;
-
-  // Let the user filter by 'kombinált' naturally on frontend if they like, but the backend restricts data:
-  let shiftCondition = '';
-  let params = [];
-
-  if (role !== 'admin' && shift) {
-    // A regular user only sees their own shift
-    shiftCondition = "WHERE n.shift = ?";
-    params.push(shift);
-  }
-
-  const sql = `
-    SELECT n.id, n.date, n.shift,
-           h.name AS hour,
-           d.value AS duration,
-           t.name AS topic,
-           o.content AS outline,
-           i.name AS instructor,
-           u.username AS user,
-           et.name AS education_type
-    FROM naplo_entries n
-    JOIN hours h ON n.hour_id = h.id
-    JOIN durations d ON n.duration_id = d.id
-    JOIN topics t ON n.topic_id = t.id
-    JOIN outlines o ON n.outline_id = o.id
-    JOIN instructors i ON n.instructor_id = i.id
-    JOIN users u ON n.user_id = u.id
-    JOIN education_types et ON et.id = n.education_type_id
-    ${shiftCondition}
-    ORDER BY n.date ASC, n.id ASC
-  `;
-
-  db.all(sql, params, (err, rows) => {
-    if (err) {
-      return res.status(500).json({ error: 'Hiba a naplóbejegyzések lekérdezésekor.', details: err.message });
-    }
-    res.json(rows);
-  });
 });
 
 module.exports = router;
