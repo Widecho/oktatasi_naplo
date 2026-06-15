@@ -23,6 +23,15 @@ function all(sql, params = []) {
   });
 }
 
+function get(sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.get(sql, params, (err, row) => {
+      if (err) reject(err);
+      else resolve(row);
+    });
+  });
+}
+
 function run(sql, params = []) {
   return new Promise((resolve, reject) => {
     db.run(sql, params, function onRun(err) {
@@ -40,7 +49,6 @@ function normalizeShift(value) {
 function parseEntryPayload(body, user) {
   const fields = {
     date: body.date,
-    hour_id: Number(body.hour_id),
     duration_id: Number(body.duration_id),
     topic_id: Number(body.topic_id),
     outline_id: Number(body.outline_id),
@@ -63,6 +71,28 @@ function parseEntryPayload(body, user) {
   }
 
   return { values: { ...fields, shift } };
+}
+
+function normalizeText(value) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+async function resolveHourId(body) {
+  if (body.hour_id) {
+    const hourId = Number(body.hour_id);
+    if (Number.isInteger(hourId) && hourId > 0) return hourId;
+  }
+
+  const hourText = normalizeText(body.hour_text);
+  if (!hourText) {
+    throw new Error('Az óra megadása kötelező.');
+  }
+
+  const existing = await get('SELECT id FROM hours WHERE name = ? COLLATE NOCASE', [hourText]);
+  if (existing) return existing.id;
+
+  const result = await run('INSERT INTO hours (name) VALUES (?)', [hourText]);
+  return result.lastID;
 }
 
 function userCanAccessAll(user) {
@@ -104,7 +134,6 @@ router.post('/naplo', auth, async (req, res) => {
 
   const {
     date,
-    hour_id,
     duration_id,
     topic_id,
     outline_id,
@@ -114,6 +143,7 @@ router.post('/naplo', auth, async (req, res) => {
   } = parsed.values;
 
   try {
+    const hour_id = await resolveHourId(req.body);
     const result = await run(`
       INSERT INTO naplo_entries
         (date, hour_id, duration_id, topic_id, outline_id, instructor_id, education_type_id, user_id, shift)
@@ -122,6 +152,9 @@ router.post('/naplo', auth, async (req, res) => {
 
     res.status(201).json({ message: 'Bejegyzés sikeresen létrehozva.', entryId: result.lastID });
   } catch (err) {
+    if (err.message === 'Az óra megadása kötelező.') {
+      return res.status(400).json({ error: err.message });
+    }
     res.status(500).json({ error: 'Hiba a bejegyzés mentésekor.', details: err.message });
   }
 });
@@ -139,7 +172,6 @@ router.put('/naplo/:id', auth, async (req, res) => {
 
   const {
     date,
-    hour_id,
     duration_id,
     topic_id,
     outline_id,
@@ -151,6 +183,7 @@ router.put('/naplo/:id', auth, async (req, res) => {
   const access = restrictedEntryWhere(req.user);
 
   try {
+    const hour_id = await resolveHourId(req.body);
     const result = await run(`
       UPDATE naplo_entries
       SET date = ?,
@@ -183,6 +216,9 @@ router.put('/naplo/:id', auth, async (req, res) => {
 
     res.json({ message: 'Bejegyzés sikeresen frissítve.' });
   } catch (err) {
+    if (err.message === 'Az óra megadása kötelező.') {
+      return res.status(400).json({ error: err.message });
+    }
     res.status(500).json({ error: 'Hiba a bejegyzés frissítésekor.', details: err.message });
   }
 });

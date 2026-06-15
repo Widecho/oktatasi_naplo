@@ -13,7 +13,8 @@
   <form id="entryForm">
     <input type="date" id="date" required>
 
-    <select id="hours" required></select>
+    <input type="text" id="hourText" list="hoursList" placeholder="Óra, pl. 08:00" required>
+    <datalist id="hoursList"></datalist>
     <select id="education_types" required></select>
     <select id="shift" style="display:none;">
       <option value="" disabled selected>Válassz műszakot!</option>
@@ -77,6 +78,7 @@
     </span>
 
     <button onclick="loadEntries()">Megjelenítés</button>
+    <button onclick="openTableView()">Táblázatos nézet</button>
     <button onclick="exportToExcel()">XLS export</button>
   </div>
 

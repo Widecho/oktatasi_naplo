@@ -198,6 +198,13 @@ input[type="date"] {
   margin-bottom: 20px;
 }
 
+.page-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
 .entry-item {
   border-bottom: 1px solid #1e293b;
   padding: 12px 0;
@@ -229,4 +236,88 @@ input[type="date"] {
   background-color: darkorange;
   color: white;
   border-color: darkorange;
+}
+
+.manual-page {
+  max-width: 850px;
+}
+
+.manual-page section {
+  border-bottom: 1px solid #1e293b;
+  padding: 18px 0;
+}
+
+.manual-page section:last-child {
+  border-bottom: 0;
+}
+
+.manual-page li {
+  margin-bottom: 8px;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+}
+
+.entries-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 980px;
+  background: rgba(2, 6, 23, 0.35);
+}
+
+.entries-table th,
+.entries-table td {
+  border-bottom: 1px solid #1e293b;
+  padding: 10px 12px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.entries-table th {
+  position: sticky;
+  top: 0;
+  background: #0f172a;
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.entries-table tbody tr:hover {
+  background: rgba(0, 242, 254, 0.06);
+}
+
+.entries-table td:nth-child(8) {
+  min-width: 260px;
+}
+
+@media print {
+  body {
+    max-width: none;
+    margin: 0;
+    color: #000;
+    background: #fff;
+  }
+
+  .page-actions {
+    display: none;
+  }
+
+  .table-wrapper {
+    overflow: visible;
+    border: 0;
+  }
+
+  .entries-table {
+    min-width: 0;
+    background: #fff;
+    font-size: 11px;
+  }
+
+  .entries-table th {
+    position: static;
+    color: #000;
+    background: #e5e7eb;
+  }
 }

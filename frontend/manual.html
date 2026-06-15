@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="hu">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Felhasználói kézikönyv - Oktatási Napló</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <div class="page-actions">
+    <a href="login.html"><button type="button">Vissza a bejelentkezéshez</button></a>
+  </div>
+
+  <main class="manual-page">
+    <h1>Felhasználói kézikönyv</h1>
+
+    <section>
+      <h2>Bejelentkezés</h2>
+      <p>Az alkalmazás használatához nyisd meg a szerver címét böngészőben, majd jelentkezz be a felhasználóneveddel és jelszavaddal.</p>
+      <p>Ha az adminisztrátor jelszó-visszaállítást végzett, belépés után kötelező új jelszót megadni. Az új jelszónak legalább 6 karakterből kell állnia, és tartalmaznia kell legalább egy számot.</p>
+    </section>
+
+    <section>
+      <h2>Új naplóbejegyzés rögzítése</h2>
+      <ol>
+        <li>Válaszd ki a dátumot.</li>
+        <li>Írd be az órát, majd válaszd ki az oktatás típusát, az időtartamot, az oktatót, a témát és a vázlatot.</li>
+        <li>Admin felhasználóként válaszd ki a műszakot is.</li>
+        <li>Kattints a Mentés gombra.</li>
+      </ol>
+      <p>Normál felhasználóként a rendszer automatikusan a saját műszakodhoz menti a bejegyzést.</p>
+    </section>
+
+    <section>
+      <h2>Bejegyzések megtekintése és szűrése</h2>
+      <p>A naplóbejegyzések a főoldal alsó részén, dátum szerint csoportosítva jelennek meg.</p>
+      <ul>
+        <li>Havi bontás: egy kiválasztott hónap bejegyzéseit mutatja.</li>
+        <li>Napi bontás: egy konkrét nap bejegyzéseit mutatja.</li>
+        <li>Időszak: kezdő és záró dátum közötti bejegyzéseket mutat.</li>
+      </ul>
+      <p>Admin felhasználóként műszak szerint is lehet szűrni.</p>
+      <p>A Táblázatos nézet gombbal az aktuálisan beállított szűrés eredménye külön, áttekinthető táblázatos oldalon nyitható meg.</p>
+    </section>
+
+    <section>
+      <h2>Bejegyzés szerkesztése vagy törlése</h2>
+      <p>A meglévő bejegyzéseknél a Szerkesztés gombbal módosítható az adott sor. Ilyenkor a bejegyzés adatai visszatöltődnek az űrlapba.</p>
+      <p>A Törlés gombbal a bejegyzés eltávolítható. Törlés előtt a böngésző megerősítést kér.</p>
+      <p>Normál felhasználó csak a saját műszakához tartozó bejegyzéseket éri el.</p>
+    </section>
+
+    <section>
+      <h2>Excel export</h2>
+      <p>A kiválasztott szűrés alapján az XLS export gombbal Excel fájl készíthető. A fájl a böngésző letöltései közé kerül.</p>
+      <p>Admin felhasználó exportálhat minden műszakot vagy egy kiválasztott műszakot is.</p>
+    </section>
+
+    <section>
+      <h2>Admin felület</h2>
+      <p>Admin felhasználóként a főoldalon megjelenik az Admin felület gomb. Itt bővíthetők és törölhetők a legördülő listák elemei:</p>
+      <ul>
+        <li>oktatók,</li>
+        <li>oktatási típusok,</li>
+        <li>témák,</li>
+        <li>vázlatok,</li>
+        <li>időtartamok.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Felhasználó menedzsment</h2>
+      <p>Admin felhasználóként a Felhasználó menedzsment oldalon láthatók a normál felhasználók.</p>
+      <ul>
+        <li>Módosítható a felhasználó műszakja.</li>
+        <li>Visszaállítható a felhasználó jelszava.</li>
+      </ul>
+      <p>Jelszó-visszaállítás után a felhasználónak a következő belépéskor új jelszót kell megadnia.</p>
+    </section>
+
+    <section>
+      <h2>Kijelentkezés</h2>
+      <p>A munka befejezésekor kattints a Kijelentkezés gombra. Közös vagy céges gépen ezt mindig érdemes megtenni.</p>
+    </section>
+  </main>
+</body>
+
+</html>

@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:3000/api';
+const API_URL = '/api';
 const ALL_SHIFTS_LABEL = 'Összes';
 
 let editingId = null;
@@ -184,7 +184,7 @@ if (entryForm) {
 
     const body = {
       date: document.getElementById('date').value,
-      hour_id: Number(document.getElementById('hours').value),
+      hour_text: document.getElementById('hourText').value.trim(),
       education_type_id: Number(document.getElementById('education_types').value),
       duration_id: Number(document.getElementById('durations').value),
       instructor_id: Number(document.getElementById('instructors').value),
@@ -263,6 +263,19 @@ async function loadDropdowns() {
     }
 
     Object.entries(data).forEach(([key, list]) => {
+      if (key === 'hours') {
+        const dataList = document.getElementById('hoursList');
+        if (!dataList) return;
+
+        dataList.innerHTML = '';
+        list.forEach(item => {
+          const option = document.createElement('option');
+          option.value = item.name;
+          dataList.appendChild(option);
+        });
+        return;
+      }
+
       const select = document.getElementById(key);
       if (!select) return;
 
@@ -428,7 +441,7 @@ async function deleteEntry(id) {
 
 function editEntry(entry) {
   document.getElementById('date').value = entry.date;
-  setSelectValue('hours', entry.hour_id);
+  document.getElementById('hourText').value = entry.hour;
   setSelectValue('education_types', entry.education_type_id);
   setSelectValue('durations', entry.duration_id);
   setSelectValue('instructors', entry.instructor_id);
@@ -495,6 +508,34 @@ function exportToExcel() {
   window.open(`${API_URL}/export?${params.toString()}`, '_blank');
 }
 
+function openTableView() {
+  const type = document.getElementById('filterType') ? document.getElementById('filterType').value : 'month';
+  const params = new URLSearchParams({ type });
+
+  if (type === 'month') {
+    const month = document.getElementById('monthSelect').value;
+    if (!month) return alert('Válassz hónapot!');
+    params.set('month', month);
+  } else if (type === 'day') {
+    const day = document.getElementById('daySelect').value;
+    if (!day) return alert('Válassz napot!');
+    params.set('day', day);
+  } else if (type === 'interval') {
+    const start = document.getElementById('startDate').value;
+    const end = document.getElementById('endDate').value;
+    if (!start || !end) return alert('Válaszd ki a kezdő és végdátumot!');
+    params.set('start', start);
+    params.set('end', end);
+  }
+
+  const filterShiftContainer = document.getElementById('shiftFilterContainer');
+  if (filterShiftContainer && filterShiftContainer.style.display !== 'none') {
+    params.set('shift', document.getElementById('filterShift').value);
+  }
+
+  window.location.href = `table-view.html?${params.toString()}`;
+}
+
 function setTodayDate() {
   const dateInput = document.getElementById('date');
   if (dateInput) dateInput.value = currentDateString();
@@ -504,3 +545,4 @@ window.logout = logout;
 window.updateFilterUI = updateFilterUI;
 window.loadEntries = loadEntries;
 window.exportToExcel = exportToExcel;
+window.openTableView = openTableView;
