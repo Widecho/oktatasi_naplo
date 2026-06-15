@@ -40,6 +40,12 @@
   <h2>Szűrés és exportálás</h2>
 
   <div class="filter-section">
+    <div class="quick-filter-actions">
+      <button type="button" onclick="setQuickFilter('today')">Mai nap</button>
+      <button type="button" onclick="setQuickFilter('week')">Ez a hét</button>
+      <button type="button" onclick="setQuickFilter('month')">Ez a hónap</button>
+    </div>
+
     <label for="filterType"><strong>Szűrés típusa:</strong></label>
     <select id="filterType" onchange="updateFilterUI()">
       <option value="month">Havi bontás</option>
@@ -77,6 +83,9 @@
       </select>
     </span>
 
+    <label for="entrySearch"><strong>Keresés:</strong></label>
+    <input type="search" id="entrySearch" placeholder="Oktató, téma, vázlat, kitöltő..." oninput="loadEntries()">
+
     <button onclick="loadEntries()">Megjelenítés</button>
     <button onclick="openTableView()">Táblázatos nézet</button>
     <button onclick="exportToExcel()">XLS export</button>
@@ -87,6 +96,7 @@
   <div id="entryList" class="calendar-view"></div>
 
   <p id="response"></p>
+  <div id="toast" class="toast" aria-live="polite"></div>
 
   <script src="script.js"></script>
 </body>

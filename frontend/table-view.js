@@ -1,6 +1,10 @@
 const API_URL = '/api';
 const ALL_SHIFTS_LABEL = 'Összes';
 
+let tableEntries = [];
+let tableFilters = {};
+let sortState = { key: 'date', direction: 'asc' };
+
 function getToken() {
   return localStorage.getItem('token');
 }
@@ -41,6 +45,21 @@ function filterEntries(entries, filters) {
     filtered = filtered.filter(entry => entry.shift === filters.shift);
   }
 
+  const search = document.getElementById('tableSearch')?.value.trim().toLowerCase();
+  if (search) {
+    filtered = filtered.filter(entry => [
+      entry.date,
+      entry.hour,
+      entry.shift,
+      entry.education_type,
+      entry.duration,
+      entry.instructor,
+      entry.topic,
+      entry.outline,
+      entry.user
+    ].some(value => String(value || '').toLowerCase().includes(search)));
+  }
+
   return filtered;
 }
 
@@ -49,6 +68,15 @@ function filterLabel(filters) {
   if (filters.type === 'day' && filters.day) return `Napi szűrés: ${filters.day}`;
   if (filters.type === 'interval') return `Időszak: ${filters.start || '-'} - ${filters.end || '-'}`;
   return 'Szűrés nélkül';
+}
+
+function sortEntries(entries) {
+  const direction = sortState.direction === 'asc' ? 1 : -1;
+  return [...entries].sort((a, b) => {
+    const left = String(a[sortState.key] || '').toLowerCase();
+    const right = String(b[sortState.key] || '').toLowerCase();
+    return left.localeCompare(right, 'hu') * direction;
+  });
 }
 
 function renderTable(entries, filters) {
@@ -66,7 +94,7 @@ function renderTable(entries, filters) {
 
   message.textContent = '';
 
-  entries.forEach(entry => {
+  sortEntries(entries).forEach(entry => {
     const row = document.createElement('tr');
     [
       entry.date,
@@ -91,7 +119,7 @@ function renderTable(entries, filters) {
 async function loadTableView() {
   if (!requireLogin()) return;
 
-  const filters = getFilters();
+  tableFilters = getFilters();
   const res = await fetch(`${API_URL}/naplo`, {
     headers: authHeaders()
   });
@@ -101,8 +129,29 @@ async function loadTableView() {
     return;
   }
 
-  const entries = await res.json();
-  renderTable(filterEntries(entries, filters), filters);
+  tableEntries = await res.json();
+  renderTable(filterEntries(tableEntries, tableFilters), tableFilters);
 }
 
-document.addEventListener('DOMContentLoaded', loadTableView);
+function rerenderTable() {
+  renderTable(filterEntries(tableEntries, tableFilters), tableFilters);
+}
+
+function setupTableControls() {
+  document.getElementById('tableSearch').addEventListener('input', rerenderTable);
+  document.querySelectorAll('[data-sort]').forEach(button => {
+    button.addEventListener('click', () => {
+      const key = button.dataset.sort;
+      sortState = {
+        key,
+        direction: sortState.key === key && sortState.direction === 'asc' ? 'desc' : 'asc'
+      };
+      rerenderTable();
+    });
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  setupTableControls();
+  loadTableView();
+});

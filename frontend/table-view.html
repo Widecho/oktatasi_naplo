@@ -16,19 +16,24 @@
   <h1>Táblázatos napló nézet</h1>
   <p id="tableSummary"></p>
 
+  <div class="table-tools">
+    <label for="tableSearch"><strong>Keresés:</strong></label>
+    <input type="search" id="tableSearch" placeholder="Oktató, téma, vázlat, kitöltő...">
+  </div>
+
   <div class="table-wrapper">
     <table class="entries-table">
       <thead>
         <tr>
-          <th>Dátum</th>
-          <th>Óra</th>
-          <th>Műszak</th>
-          <th>Oktatás típusa</th>
-          <th>Időtartam</th>
-          <th>Oktató</th>
-          <th>Téma</th>
-          <th>Vázlat</th>
-          <th>Kitöltötte</th>
+          <th><button type="button" data-sort="date">Dátum</button></th>
+          <th><button type="button" data-sort="hour">Óra</button></th>
+          <th><button type="button" data-sort="shift">Műszak</button></th>
+          <th><button type="button" data-sort="education_type">Oktatás típusa</button></th>
+          <th><button type="button" data-sort="duration">Időtartam</button></th>
+          <th><button type="button" data-sort="instructor">Oktató</button></th>
+          <th><button type="button" data-sort="topic">Téma</button></th>
+          <th><button type="button" data-sort="outline">Vázlat</button></th>
+          <th><button type="button" data-sort="user">Kitöltötte</button></th>
         </tr>
       </thead>
       <tbody id="entriesTableBody"></tbody>

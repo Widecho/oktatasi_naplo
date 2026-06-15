@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="hu">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Módosítási napló</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <div class="page-actions">
+    <a href="admin.html"><button type="button">Vissza az admin felületre</button></a>
+    <button type="button" onclick="loadAuditLogs()">Frissítés</button>
+  </div>
+
+  <h1>Módosítási napló</h1>
+  <p>Az utolsó bejegyzés-szerkesztések és törlések áttekintése.</p>
+
+  <div class="table-tools">
+    <label for="auditSearch"><strong>Keresés:</strong></label>
+    <input type="search" id="auditSearch" placeholder="Felhasználó, művelet, dátum, téma...">
+  </div>
+
+  <div class="table-wrapper">
+    <table class="entries-table audit-table">
+      <thead>
+        <tr>
+          <th>Időpont</th>
+          <th>Művelet</th>
+          <th>Felhasználó</th>
+          <th>Bejegyzés</th>
+          <th>Előtte</th>
+          <th>Utána</th>
+        </tr>
+      </thead>
+      <tbody id="auditLogBody"></tbody>
+    </table>
+  </div>
+
+  <p id="auditMessage"></p>
+
+  <script src="audit-log.js"></script>
+</body>
+
+</html>

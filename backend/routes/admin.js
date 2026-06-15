@@ -1,5 +1,6 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
+const path = require('path');
 const router = express.Router();
 const db = require('../models/db');
 const auth = require('../middleware/auth');
@@ -94,9 +95,77 @@ function deleteListItem(resourceKey) {
   };
 }
 
+function updateListItem(resourceKey) {
+  return async (req, res) => {
+    const resource = LIST_RESOURCES[resourceKey];
+    const id = Number(req.params.id);
+    const value = typeof req.body[resource.field] === 'string' ? req.body[resource.field].trim() : '';
+
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ error: 'Érvénytelen azonosító.' });
+    }
+
+    if (!value) {
+      return res.status(400).json({ error: `${resource.label} megadása kötelező.` });
+    }
+
+    try {
+      const existing = await get(
+        `SELECT id FROM ${resource.table} WHERE ${resource.field} = ? COLLATE NOCASE AND id <> ?`,
+        [value, id]
+      );
+      if (existing) {
+        return res.status(409).json({ error: `${resource.label} már létezik.` });
+      }
+
+      const result = await run(
+        `UPDATE ${resource.table} SET ${resource.field} = ? WHERE id = ?`,
+        [value, id]
+      );
+      if (result.changes === 0) {
+        return res.status(404).json({ error: `${resource.label} nem található.` });
+      }
+
+      res.json({ message: `${resource.label} sikeresen frissítve.` });
+    } catch (err) {
+      res.status(500).json({ error: `${resource.label} frissítése sikertelen.`, details: err.message });
+    }
+  };
+}
+
 Object.keys(LIST_RESOURCES).forEach(resourceKey => {
   router.post(`/${resourceKey}`, auth, adminOnly, createListItem(resourceKey));
+  router.put(`/${resourceKey}/:id`, auth, adminOnly, updateListItem(resourceKey));
   router.delete(`/${resourceKey}/:id`, auth, adminOnly, deleteListItem(resourceKey));
+});
+
+router.get('/backup', auth, adminOnly, (req, res) => {
+  const dbPath = path.resolve(__dirname, '../../oktatasi_naplo.db');
+  const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+  res.download(dbPath, `oktatasi_naplo_backup_${timestamp}.db`);
+});
+
+router.get('/audit-logs', auth, adminOnly, async (req, res) => {
+  const limit = Math.min(Math.max(Number(req.query.limit) || 100, 1), 500);
+
+  try {
+    const rows = await all(`
+      SELECT id, entry_id, action, user_id, username, created_at, before_json, after_json
+      FROM audit_logs
+      ORDER BY datetime(created_at) DESC, id DESC
+      LIMIT ?
+    `, [limit]);
+
+    res.json(rows.map(row => ({
+      ...row,
+      before: row.before_json ? JSON.parse(row.before_json) : null,
+      after: row.after_json ? JSON.parse(row.after_json) : null,
+      before_json: undefined,
+      after_json: undefined
+    })));
+  } catch (err) {
+    res.status(500).json({ error: 'Hiba az audit napló lekérdezésekor.', details: err.message });
+  }
 });
 
 router.get('/users', auth, adminOnly, async (req, res) => {

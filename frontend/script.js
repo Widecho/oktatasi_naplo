@@ -46,6 +46,17 @@ function setMessage(elementId, message) {
   if (element) element.textContent = message;
 }
 
+function showToast(message, type = 'success') {
+  const toast = document.getElementById('toast');
+  if (!toast) return;
+
+  toast.textContent = message;
+  toast.className = `toast ${type} visible`;
+  setTimeout(() => {
+    toast.classList.remove('visible');
+  }, 3000);
+}
+
 function createButton(label, onClick, type = 'button') {
   const button = document.createElement('button');
   button.type = type;
@@ -212,6 +223,7 @@ if (entryForm) {
       : data.error || 'A mentés sikertelen.');
 
     if (res.ok) {
+      showToast(editingId === null ? 'Bejegyzés mentve.' : 'Bejegyzés frissítve.');
       resetEntryForm();
       loadEntries();
     }
@@ -380,6 +392,21 @@ function filterEntries(entries) {
     }
   }
 
+  const search = document.getElementById('entrySearch')?.value.trim().toLowerCase();
+  if (search) {
+    filtered = filtered.filter(entry => [
+      entry.date,
+      entry.hour,
+      entry.shift,
+      entry.education_type,
+      entry.duration,
+      entry.instructor,
+      entry.topic,
+      entry.outline,
+      entry.user
+    ].some(value => String(value || '').toLowerCase().includes(search)));
+  }
+
   return filtered;
 }
 
@@ -411,6 +438,7 @@ function renderEntry(entry) {
   const actions = document.createElement('div');
   actions.className = 'entry-actions';
   actions.appendChild(createButton('Szerkesztés', () => editEntry(entry)));
+  actions.appendChild(createButton('Másolás', () => copyEntry(entry)));
   actions.appendChild(createButton('Törlés', () => deleteEntry(entry.id)));
 
   item.appendChild(summary);
@@ -431,7 +459,7 @@ async function deleteEntry(id) {
   });
 
   if (res.ok) {
-    alert('Bejegyzés törölve.');
+    showToast('Bejegyzés törölve.');
     loadEntries();
   } else {
     const data = await res.json();
@@ -460,6 +488,28 @@ function editEntry(entry) {
   document.getElementById('cancelEdit').style.display = 'inline-block';
 }
 
+function copyEntry(entry) {
+  document.getElementById('date').value = currentDateString();
+  document.getElementById('hourText').value = entry.hour;
+  setSelectValue('education_types', entry.education_type_id);
+  setSelectValue('durations', entry.duration_id);
+  setSelectValue('instructors', entry.instructor_id);
+  setSelectValue('topics', entry.topic_id);
+  setSelectValue('outlines', entry.outline_id);
+
+  const shiftSelect = document.getElementById('shift');
+  if (shiftSelect && shiftSelect.style.display !== 'none') {
+    shiftSelect.value = entry.shift || '';
+  }
+
+  editingId = null;
+  entryForm.classList.remove('editing-mode');
+  document.getElementById('cancelEdit').style.display = 'none';
+  setMessage('response', 'A bejegyzés adatai másolva az űrlapra. Mentéskor új bejegyzés jön létre.');
+  showToast('Bejegyzés másolva az űrlapra.');
+  entryForm.scrollIntoView({ behavior: 'smooth' });
+}
+
 function setSelectValue(selectId, value) {
   const select = document.getElementById(selectId);
   if (select) select.value = String(value);
@@ -478,6 +528,42 @@ function updateFilterUI() {
   document.getElementById('monthFilterContainer').style.display = type === 'month' ? 'inline' : 'none';
   document.getElementById('dayFilterContainer').style.display = type === 'day' ? 'inline' : 'none';
   document.getElementById('intervalFilterContainer').style.display = type === 'interval' ? 'inline' : 'none';
+}
+
+function setQuickFilter(mode) {
+  const today = new Date();
+  const todayStr = currentDateString();
+  const filterType = document.getElementById('filterType');
+
+  if (mode === 'today') {
+    filterType.value = 'day';
+    updateFilterUI();
+    document.getElementById('daySelect').value = todayStr;
+  } else if (mode === 'week') {
+    const day = today.getDay() || 7;
+    const start = new Date(today);
+    start.setDate(today.getDate() - day + 1);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+
+    filterType.value = 'interval';
+    updateFilterUI();
+    document.getElementById('startDate').value = formatDate(start);
+    document.getElementById('endDate').value = formatDate(end);
+  } else if (mode === 'month') {
+    filterType.value = 'month';
+    updateFilterUI();
+    document.getElementById('monthSelect').value = todayStr.slice(0, 7);
+  }
+
+  loadEntries();
+}
+
+function formatDate(date) {
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
 }
 
 function exportToExcel() {
@@ -546,3 +632,4 @@ window.updateFilterUI = updateFilterUI;
 window.loadEntries = loadEntries;
 window.exportToExcel = exportToExcel;
 window.openTableView = openTableView;
+window.setQuickFilter = setQuickFilter;

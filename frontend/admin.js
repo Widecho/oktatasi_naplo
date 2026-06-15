@@ -76,6 +76,32 @@ async function deleteData(endpoint, id) {
   }
 }
 
+async function updateData(config, item, value) {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    alert('Az érték nem lehet üres.');
+    return;
+  }
+
+  const res = await fetch(`${API_URL}/admin/${config.endpoint}/${item.id}`, {
+    method: 'PUT',
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ [config.field]: trimmed })
+  });
+  const data = await res.json();
+
+  if (res.ok) {
+    alert('Frissítve.');
+    loadAllLists();
+  } else {
+    alert(data.error || 'Hiba történt a frissítéskor.');
+  }
+}
+
+function downloadBackup() {
+  window.open(`${API_URL}/admin/backup?token=${encodeURIComponent(token)}`, '_blank');
+}
+
 async function loadList(config, dropdownData) {
   const container = document.getElementById(config.containerId);
   const list = dropdownData[config.type] || [];
@@ -90,16 +116,24 @@ async function loadList(config, dropdownData) {
     const row = document.createElement('div');
     row.className = 'list-row';
 
-    const label = document.createElement('span');
-    label.textContent = item[config.field];
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = item[config.field];
+    input.className = 'inline-edit-input';
 
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.textContent = 'Törlés';
-    button.addEventListener('click', () => deleteData(config.endpoint, item.id));
+    const saveButton = document.createElement('button');
+    saveButton.type = 'button';
+    saveButton.textContent = 'Mentés';
+    saveButton.addEventListener('click', () => updateData(config, item, input.value));
 
-    row.appendChild(label);
-    row.appendChild(button);
+    const deleteButton = document.createElement('button');
+    deleteButton.type = 'button';
+    deleteButton.textContent = 'Törlés';
+    deleteButton.addEventListener('click', () => deleteData(config.endpoint, item.id));
+
+    row.appendChild(input);
+    row.appendChild(saveButton);
+    row.appendChild(deleteButton);
     container.appendChild(row);
   });
 }
@@ -141,3 +175,4 @@ if (requireAdmin()) {
 }
 
 window.logout = logout;
+window.downloadBackup = downloadBackup;

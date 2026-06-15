@@ -14,6 +14,19 @@ const DROPDOWN_QUERIES = {
   education_types: 'SELECT * FROM education_types ORDER BY name COLLATE NOCASE ASC'
 };
 
+db.run(`
+  CREATE TABLE IF NOT EXISTS audit_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    entry_id INTEGER,
+    action TEXT NOT NULL,
+    user_id INTEGER,
+    username TEXT,
+    created_at TEXT NOT NULL,
+    before_json TEXT,
+    after_json TEXT
+  )
+`);
+
 function all(sql, params = []) {
   return new Promise((resolve, reject) => {
     db.all(sql, params, (err, rows) => {
@@ -110,6 +123,52 @@ function restrictedEntryWhere(user, alias = 'naplo_entries') {
   };
 }
 
+async function getEntrySnapshot(entryId, user) {
+  const access = restrictedEntryWhere(user, 'n');
+  return get(`
+    SELECT n.id,
+           n.date,
+           n.shift,
+           n.hour_id,
+           n.duration_id,
+           n.topic_id,
+           n.outline_id,
+           n.instructor_id,
+           n.education_type_id,
+           h.name AS hour,
+           d.value AS duration,
+           t.name AS topic,
+           o.content AS outline,
+           i.name AS instructor,
+           u.username AS user,
+           et.name AS education_type
+    FROM naplo_entries n
+    JOIN hours h ON n.hour_id = h.id
+    JOIN durations d ON n.duration_id = d.id
+    JOIN topics t ON n.topic_id = t.id
+    JOIN outlines o ON n.outline_id = o.id
+    JOIN instructors i ON n.instructor_id = i.id
+    JOIN users u ON n.user_id = u.id
+    JOIN education_types et ON et.id = n.education_type_id
+    WHERE n.id = ?${access.clause}
+  `, [entryId, ...access.params]);
+}
+
+async function logAudit(action, user, entryId, before, after) {
+  await run(`
+    INSERT INTO audit_logs (entry_id, action, user_id, username, created_at, before_json, after_json)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `, [
+    entryId,
+    action,
+    user.id,
+    user.username,
+    new Date().toISOString(),
+    before ? JSON.stringify(before) : null,
+    after ? JSON.stringify(after) : null
+  ]);
+}
+
 router.get('/dropdowns', async (req, res) => {
   try {
     const results = {};
@@ -183,6 +242,11 @@ router.put('/naplo/:id', auth, async (req, res) => {
   const access = restrictedEntryWhere(req.user);
 
   try {
+    const before = await getEntrySnapshot(entryId, req.user);
+    if (!before) {
+      return res.status(404).json({ error: 'Nem található ilyen bejegyzés, vagy nincs hozzá jogosultság.' });
+    }
+
     const hour_id = await resolveHourId(req.body);
     const result = await run(`
       UPDATE naplo_entries
@@ -214,6 +278,9 @@ router.put('/naplo/:id', auth, async (req, res) => {
       return res.status(404).json({ error: 'Nem található ilyen bejegyzés, vagy nincs hozzá jogosultság.' });
     }
 
+    const after = await getEntrySnapshot(entryId, req.user);
+    await logAudit('update', req.user, entryId, before, after);
+
     res.json({ message: 'Bejegyzés sikeresen frissítve.' });
   } catch (err) {
     if (err.message === 'Az óra megadása kötelező.') {
@@ -232,10 +299,17 @@ router.delete('/naplo/:id', auth, async (req, res) => {
   const access = restrictedEntryWhere(req.user);
 
   try {
+    const before = await getEntrySnapshot(entryId, req.user);
+    if (!before) {
+      return res.status(404).json({ error: 'Nem található ilyen bejegyzés, vagy nincs hozzá jogosultság.' });
+    }
+
     const result = await run(`DELETE FROM naplo_entries WHERE id = ?${access.clause}`, [entryId, ...access.params]);
     if (result.changes === 0) {
       return res.status(404).json({ error: 'Nem található ilyen bejegyzés, vagy nincs hozzá jogosultság.' });
     }
+
+    await logAudit('delete', req.user, entryId, before, null);
 
     res.json({ message: 'Bejegyzés sikeresen törölve.' });
   } catch (err) {
