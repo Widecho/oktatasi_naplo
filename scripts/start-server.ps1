@@ -15,7 +15,13 @@ Set-Location $ProjectPath
   Out-File -FilePath $LogPath -Append -Encoding utf8
 
 try {
-  npm start *>> $LogPath
+  $Node = Get-Command node -ErrorAction Stop
+  $Npm = Get-Command npm.cmd -ErrorAction Stop
+
+  "Node: $($Node.Source)" | Out-File -FilePath $LogPath -Append -Encoding utf8
+  "npm: $($Npm.Source)" | Out-File -FilePath $LogPath -Append -Encoding utf8
+
+  & $Npm.Source start *>> $LogPath
 } catch {
   "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Hiba: $($_.Exception.Message)" |
     Out-File -FilePath $LogPath -Append -Encoding utf8

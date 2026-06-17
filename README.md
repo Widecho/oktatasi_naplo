@@ -138,26 +138,28 @@ Admin PowerShellben:
 New-NetFirewallRule -DisplayName "Oktatasi Naplo 3000" -Direction Inbound -Protocol TCP -LocalPort 3000 -Action Allow
 ```
 
-### 8. Automatikus indítás gép bekapcsolásakor
+### 8. Automatikus indítás bejelentkezéskor - ajánlott egyszerű módszer
 
-Admin PowerShellben, a projekt mappájából futtasd:
+Az ajánlott megoldás a Windows Startup mappa használata. Ehhez nem kell admin jogosultság, és általában megbízhatóbban működik egyszerű szervergépes környezetben, mint a Feladatütemező.
+
+PowerShellben, a projekt mappájából futtasd:
 
 ```powershell
-.\scripts\install-startup-task.ps1
+.\scripts\install-startup-shortcut.ps1
 ```
 
-Ez létrehoz egy Windows Feladatütemező feladatot:
+Ez létrehoz egy parancsikont az aktuális felhasználó Startup mappájában. A szerver a következő bejelentkezéskor automatikusan elindul.
+
+Kézi teszt:
+
+```powershell
+.\scripts\start-server.ps1
+```
+
+Vagy:
 
 ```text
-OktatasiNaploServer
-```
-
-Ez gépindításkor automatikusan elindítja a szervert.
-
-Kézi tesztindítás:
-
-```powershell
-Start-ScheduledTask -TaskName "OktatasiNaploServer"
+.\scripts\start-server.cmd
 ```
 
 A szerver logja itt található:
@@ -166,11 +168,40 @@ A szerver logja itt található:
 logs\server.log
 ```
 
-Automatikus indítás eltávolítása:
+Startup indítás eltávolítása:
+
+```powershell
+.\scripts\uninstall-startup-shortcut.ps1
+```
+
+### 9. Alternatív automatikus indítás Feladatütemezővel
+
+Ha a Startup mappás megoldás helyett mégis Feladatütemezőt szeretnél használni:
+
+```powershell
+.\scripts\install-startup-task.ps1
+```
+
+Kézi tesztindítás:
+
+```powershell
+Start-ScheduledTask -TaskName "OktatasiNaploServer"
+```
+
+Állapot ellenőrzése:
+
+```powershell
+Get-ScheduledTask -TaskName "OktatasiNaploServer"
+Get-ScheduledTaskInfo -TaskName "OktatasiNaploServer"
+```
+
+Feladatütemezős automatikus indítás eltávolítása:
 
 ```powershell
 .\scripts\uninstall-startup-task.ps1
 ```
+
+Ha nem indul el, először a `logs\server.log` fájlt kell megnézni. Ha nincs `logs\server.log`, akkor az automatikus indítás el sem jutott az indító script futtatásáig.
 
 ## Frissítés GitHubról
 
