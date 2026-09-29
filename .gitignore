@@ -1,3 +1,6 @@
 # Függőségek
 node_modules/
 logs/
+
+# Helyi adatbázis: ne kerüljön Gitbe
+oktatasi_naplo.db
