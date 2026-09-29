@@ -55,7 +55,8 @@ body {
 
 /* Modern Inputok - "Cyber-minimal" */
 form input,
-form select {
+form select,
+form textarea {
   background: rgba(2, 6, 23, 0.4);
   border: 1px solid #1e293b;
   color: #fff;
@@ -74,6 +75,11 @@ form input:focus {
   background: rgba(2, 6, 23, 0.6);
   box-shadow: 0 0 15px rgba(0, 242, 254, 0.15);
   transform: scale(1.01);
+}
+
+form textarea {
+  resize: vertical;
+  min-height: 72px;
 }
 
 /* Gombok - Gradient & Glow */

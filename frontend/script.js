@@ -200,7 +200,8 @@ if (entryForm) {
       duration_id: Number(document.getElementById('durations').value),
       instructor_id: Number(document.getElementById('instructors').value),
       topic_id: Number(document.getElementById('topics').value),
-      outline_id: Number(document.getElementById('outlines').value)
+      outline_id: Number(document.getElementById('outlines').value),
+      note: document.getElementById('note').value.trim()
     };
 
     const shiftSelect = document.getElementById('shift');
@@ -403,6 +404,7 @@ function filterEntries(entries) {
       entry.instructor,
       entry.topic,
       entry.outline,
+      entry.note,
       entry.user
     ].some(value => String(value || '').toLowerCase().includes(search)));
   }
@@ -432,6 +434,10 @@ function renderEntry(entry) {
   const outline = document.createElement('em');
   outline.textContent = entry.outline;
 
+  const note = document.createElement('p');
+  note.className = 'entry-note';
+  note.textContent = entry.note ? `Megjegyzés: ${entry.note}` : '';
+
   const user = document.createElement('small');
   user.textContent = `Kitöltötte: ${entry.user}`;
 
@@ -443,6 +449,7 @@ function renderEntry(entry) {
 
   item.appendChild(summary);
   item.appendChild(outline);
+  if (entry.note) item.appendChild(note);
   item.appendChild(document.createElement('br'));
   item.appendChild(user);
   item.appendChild(actions);
@@ -475,6 +482,7 @@ function editEntry(entry) {
   setSelectValue('instructors', entry.instructor_id);
   setSelectValue('topics', entry.topic_id);
   setSelectValue('outlines', entry.outline_id);
+  document.getElementById('note').value = entry.note || '';
 
   const shiftSelect = document.getElementById('shift');
   if (shiftSelect && shiftSelect.style.display !== 'none') {
@@ -496,6 +504,7 @@ function copyEntry(entry) {
   setSelectValue('instructors', entry.instructor_id);
   setSelectValue('topics', entry.topic_id);
   setSelectValue('outlines', entry.outline_id);
+  document.getElementById('note').value = entry.note || '';
 
   const shiftSelect = document.getElementById('shift');
   if (shiftSelect && shiftSelect.style.display !== 'none') {

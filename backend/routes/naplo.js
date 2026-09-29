@@ -83,7 +83,13 @@ function parseEntryPayload(body, user) {
     return { error: 'Érvénytelen műszak.' };
   }
 
-  return { values: { ...fields, shift } };
+  return {
+    values: {
+      ...fields,
+      note: typeof body.note === 'string' ? body.note.trim() : null,
+      shift
+    }
+  };
 }
 
 function normalizeText(value) {
@@ -135,6 +141,7 @@ async function getEntrySnapshot(entryId, user) {
            n.outline_id,
            n.instructor_id,
            n.education_type_id,
+           n.note,
            h.name AS hour,
            d.value AS duration,
            t.name AS topic,
@@ -205,9 +212,9 @@ router.post('/naplo', auth, async (req, res) => {
     const hour_id = await resolveHourId(req.body);
     const result = await run(`
       INSERT INTO naplo_entries
-        (date, hour_id, duration_id, topic_id, outline_id, instructor_id, education_type_id, user_id, shift)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [date, hour_id, duration_id, topic_id, outline_id, instructor_id, education_type_id, req.user.id, shift]);
+        (date, hour_id, duration_id, topic_id, outline_id, instructor_id, education_type_id, user_id, shift, note)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [date, hour_id, duration_id, topic_id, outline_id, instructor_id, education_type_id, req.user.id, shift, parsed.values.note]);
 
     res.status(201).json({ message: 'Bejegyzés sikeresen létrehozva.', entryId: result.lastID });
   } catch (err) {
@@ -236,6 +243,7 @@ router.put('/naplo/:id', auth, async (req, res) => {
     outline_id,
     instructor_id,
     education_type_id,
+    note,
     shift
   } = parsed.values;
 
@@ -257,6 +265,7 @@ router.put('/naplo/:id', auth, async (req, res) => {
           outline_id = ?,
           instructor_id = ?,
           education_type_id = ?,
+          note = COALESCE(?, note),
           user_id = ?,
           shift = ?
       WHERE id = ?${access.clause}
@@ -268,6 +277,7 @@ router.put('/naplo/:id', auth, async (req, res) => {
       outline_id,
       instructor_id,
       education_type_id,
+      note,
       req.user.id,
       shift,
       entryId,
@@ -332,6 +342,7 @@ router.get('/naplo', auth, async (req, res) => {
              n.outline_id,
              n.instructor_id,
              n.education_type_id,
+             n.note,
              h.name AS hour,
              d.value AS duration,
              t.name AS topic,

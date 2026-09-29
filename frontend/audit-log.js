@@ -67,6 +67,7 @@ function detailSummary(entry) {
     `Oktató: ${entry.instructor || ''}`,
     `Téma: ${entry.topic || ''}`,
     `Vázlat: ${entry.outline || ''}`,
+    `Megjegyzés: ${entry.note || ''}`,
     `Kitöltötte: ${entry.user || ''}`
   ].join('\n');
 }

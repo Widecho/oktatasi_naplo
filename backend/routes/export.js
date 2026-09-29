@@ -73,6 +73,7 @@ function buildColumns(isAdmin) {
     { header: 'Oktató', width: 25, value: row => row.instructor },
     { header: 'Téma', width: 20, value: row => row.topic },
     { header: 'Vázlat', width: 40, value: row => row.outline },
+    { header: 'Megjegyzés', width: 40, value: row => row.note },
     { header: 'Kitöltötte', width: 18, value: row => row.user }
   ];
 
@@ -111,6 +112,7 @@ router.get('/export', auth, async (req, res) => {
              instructors.name AS instructor,
              topics.name AS topic,
              outlines.content AS outline,
+             naplo_entries.note,
              users.username AS user
       FROM naplo_entries
       JOIN hours ON naplo_entries.hour_id = hours.id

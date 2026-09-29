@@ -56,6 +56,7 @@ function filterEntries(entries, filters) {
       entry.instructor,
       entry.topic,
       entry.outline,
+      entry.note,
       entry.user
     ].some(value => String(value || '').toLowerCase().includes(search)));
   }
@@ -105,6 +106,7 @@ function renderTable(entries, filters) {
       entry.instructor,
       entry.topic,
       entry.outline,
+      entry.note,
       entry.user
     ].forEach(value => {
       const cell = document.createElement('td');

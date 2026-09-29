@@ -6,6 +6,7 @@ const naploRoutes = require('./routes/naplo');
 const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
 const exportRoutes = require('./routes/export');
+const db = require('./models/db');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -27,9 +28,14 @@ function getLocalNetworkUrls() {
     .map(address => `http://${address.address}:${PORT}`);
 }
 
-app.listen(PORT, HOST, () => {
-  console.log(`Szerver elindult: http://localhost:${PORT}`);
-  getLocalNetworkUrls().forEach(url => {
-    console.log(`Hálózati elérés: ${url}`);
+db.ready.then(() => {
+  app.listen(PORT, HOST, () => {
+    console.log(`Szerver elindult: http://localhost:${PORT}`);
+    getLocalNetworkUrls().forEach(url => {
+      console.log(`Hálózati elérés: ${url}`);
+    });
   });
+}).catch(err => {
+  console.error('Az adatbázis előkészítése sikertelen:', err.message);
+  process.exitCode = 1;
 });
